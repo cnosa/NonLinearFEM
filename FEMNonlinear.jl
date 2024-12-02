@@ -28,9 +28,41 @@ md"""
 # Theoretical part
 """
 
+# ╔═╡ 6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+md"""
+**Strong formulation**
+
+$(S)\begin{cases}
+\phi''(t) = A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)},\\
+\psi''(t) = -\frac{A}{\delta}\ e^{\gamma \phi(t)},\\
+\phi(0) = \phi(2\pi),  \phi'(0)=\phi'(2\pi),\\
+\psi(0) = \psi(2\pi),  \psi'(0)=\psi'(2\pi).\\
+\end{cases}$
+"""
+
+# ╔═╡ b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
+md"""
+**Weak formulation**
+
+$(W)\begin{cases}
+\int_{0}^{2\pi}\phi'(t)p'(t)dt = \int_{0}^{2\pi} - A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}p(t)dt\\
+\int_{0}^{2\pi}\psi'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi(t)}q(t)dt\\
+\end{cases}$
+"""
+
 # ╔═╡ 85e8541b-b1dc-423b-b8f2-a3dee5e51992
 md"""
 ## Picard's method
+"""
+
+# ╔═╡ 89414081-c3ad-42b8-a409-166eac20764f
+md"""
+**Picard's formulation**
+
+$(P)\begin{cases}
+\int_{0}^{2\pi}\phi_{n+1}'(t)p'(t)dt = \int_{0}^{2\pi} - A(\psi_{n+1}(t)+\psi_0)\ e^{\gamma \phi_{n}(t)}p(t)dt\\
+\int_{0}^{2\pi}\psi_{n+1}'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi_{n}(t)}q(t)dt\\
+\end{cases}$
 """
 
 # ╔═╡ 5f50b8cd-1931-4b4a-856c-6b9395694595
@@ -38,10 +70,23 @@ md"""
 ## Newton's method
 """
 
+# ╔═╡ 9f41b617-1546-4569-a42b-806d37e9ba41
+md"""
+**Newton's formulation**
+
+$(N)\begin{cases}
+\int_{0}^{2\pi}k'(t)p'(t)dt = \int_{0}^{2\pi} - A[h(t)(1+\phi_n(t)) + k(t)(\gamma+\gamma\phi_n(t))]p(t)dt\\
+\int_{0}^{2\pi}h'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} \gamma k(t)q(t)dt\\
+\end{cases}$
+"""
+
 # ╔═╡ 22099ce3-7655-4652-8e6c-540de4c61548
 md"""
 # Implementation
 """
+
+# ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
+
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -321,8 +366,13 @@ version = "17.4.0+0"
 # ╟─d8f6f94a-a8d3-4f22-a0eb-e4a144f47e37
 # ╠═1feb3ab7-a77f-454a-aaa7-9fdb087e680b
 # ╟─6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
+# ╟─6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+# ╟─b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
 # ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
+# ╟─89414081-c3ad-42b8-a409-166eac20764f
 # ╟─5f50b8cd-1931-4b4a-856c-6b9395694595
+# ╟─9f41b617-1546-4569-a42b-806d37e9ba41
 # ╟─22099ce3-7655-4652-8e6c-540de4c61548
+# ╠═097d2cec-1f08-4f45-9112-04a1687230ed
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
