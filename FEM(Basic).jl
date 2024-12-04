@@ -4,101 +4,277 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ a9208590-a822-11ef-04a1-735c2a12a98a
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
+# ╔═╡ 3bb49ee0-7214-11ef-3f41-49a947722368
 using PlutoUI
 
-# ╔═╡ 1feb3ab7-a77f-454a-aaa7-9fdb087e680b
+# ╔═╡ b18d1570-e108-4655-9527-4a4b957c9825
 begin
 	using Plots
 	using LinearAlgebra
+	using SparseArrays
 end
 
-# ╔═╡ 2322aa25-07bf-46c2-9e74-6ecf2255026a
-PlutoUI.TableOfContents(title="Nonlinear FEM: Application", aside=true)
+# ╔═╡ 3292afbc-ac3f-4a49-815e-6359a52964b2
+PlutoUI.TableOfContents(title="Método de los elementos finitos", aside=true)
 
-# ╔═╡ 8587302a-08ed-4add-88be-8df3e334c539
+# ╔═╡ d82a0a0a-29af-4219-ba1b-74f7a80e836c
 md"""
-Notebook done by Juan Carlos Galvis and Carlos Nosa.
+- **Proyecto**. Análisis numérico de la Ecuación de Richards.
+- **Autor**. Carlos Nosa.
 """
 
-# ╔═╡ d8f6f94a-a8d3-4f22-a0eb-e4a144f47e37
+# ╔═╡ 9a656424-4a32-4efd-bf9f-b2c1654870b8
 md"""
-We are going to use the following libraries:
+# Introducción
 """
 
-# ╔═╡ 6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
+# ╔═╡ e32bc9ef-f622-4d40-b715-5f5fe4eaa54d
 md"""
-# Theoretical part
+Considere el problema de encontrar una función $u$ tal que 
+
+$- u''(x) = 1, \ x\in(0,1)$
+$u(0) = u(1) =0$
+
+Es fácil notar que la solución a este problema es $u(x) = \frac{1}{2}x(1-x)$ para $x\in[0,1]$. En este cuaderno vamos a explorar el método de los elementos finitos para resolver este ecuación diferencial ordinaria con condición de frontera.
 """
 
-# ╔═╡ 6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+# ╔═╡ eab955a4-a296-41aa-844d-b118af60853f
 md"""
-**Strong formulation**
+La anterior forma de escribir el problema se denomina *formulación fuerte*. El método de los elementos finitos considera el siguiente procedimiento:
+- **Formulación variacional**. La formula variacional 'debilita' la formulación fuerte haciendo lo siguiente: Considere un espacio de funciones $V$ adecuado tal que todas las funciones allí se anulen en la frontera del dominio $\partial \Omega $, tome $v(x)\in V$ y multiplique a ambos lados de la ecuación $-u''(x)=1$ por $v(x)$, luego integre por partes una vez al lado izquierdo de la ecuación. Considerando esto para toda $v(x)\in V$ se tiene la formulación débil o variacional, encontrar $u$ tal que para toda $v(x) \in V$ se tiene que 
 
-$(S)\begin{cases}
-\phi''(t) = A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)},\\
-\psi''(t) = -\frac{A}{\delta}\ e^{\gamma \phi(t)},\\
-\phi(0) = \phi(2\pi),  \phi'(0)=\phi'(2\pi),\\
-\psi(0) = \psi(2\pi),  \psi'(0)=\psi'(2\pi).\\
-\end{cases}$
+$\int_{\Omega}u'(x)v'(x)dx  =\int_{\Omega} v(x)dx$
+$u(0) = u(1) =0$
+
+
+- **Partición del dominio**. Realizamos una partición del dominio $\Omega$. Dado que $\Omega$ es un subconjunto de $\mathbb{R}$ simplemente podemos partir considerando $x_{i} := \frac{i}{n}$ para $i = 0,1,\ldots,n$ con $n$ un número natural mayor a $1$.
+
+- **Representación de la solución**. Vamos a suponer que podemos de representar la solución $u$ de la formulación variacional como una combinación lineal de funciones base $\phi_{\ell}$ con coeficientes desconocidos $\alpha_{\ell}$ para $\ell= 0,1,\ldots, n$, es decir, $u(x) = \sum_{\ell=0}^{n}\alpha_{\ell}\phi_{\ell}(x)$. Estas funciones base se pueden tomar lineales a trozos y que cumplan $\phi_{\ell}(x_{i}) = \delta_{i\ell}$ donde $\delta_{i\ell}$ es la delta de Kronecker y $x_i$ es el $i$-ésimo punto de la partición; una función base para $n=4$ se muestra en la figura a continuación. Es fácil notar que con esta representación de $u$ la formulación variacional se puede reescribir como encontrar $\alpha_{\ell}$ con $\ell = 0,1,\ldots,n$ tal que para todo $v(x)\in V$ se tiene que 
+
+$\sum_{\ell=0}^{n}\alpha_{\ell}\int_{\Omega}\phi_{\ell}'(x)v'(x)dx  =\int_{\Omega} v(x)dx$
+$u(0) = u(1) =0$
 """
 
-# ╔═╡ b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
-md"""
-**Weak formulation**
-
-$(W)\begin{cases}
-\int_{0}^{2\pi}\phi'(t)p'(t)dt = \int_{0}^{2\pi} - A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}p(t)dt\\
-\int_{0}^{2\pi}\psi'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi(t)}q(t)dt\\
-\end{cases}$
-"""
-
-# ╔═╡ 22099ce3-7655-4652-8e6c-540de4c61548
-md"""
-# Implementation
-"""
-
-# ╔═╡ 85e8541b-b1dc-423b-b8f2-a3dee5e51992
-md"""
-## Picard's method
-"""
-
-# ╔═╡ 89414081-c3ad-42b8-a409-166eac20764f
-md"""
-**Picard's formulation**
-
-$(P)\begin{cases}
-\int_{0}^{2\pi}\phi_{n+1}'(t)p'(t)dt = \int_{0}^{2\pi} - A(\psi_{n+1}(t)+\psi_0)\ e^{\gamma \phi_{n}(t)}p(t)dt\\
-\int_{0}^{2\pi}\psi_{n+1}'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi_{n}(t)}q(t)dt\\
-\end{cases}$
-"""
-
-# ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
+# ╔═╡ 9292b301-ab0b-4bcb-978f-4b02b304c898
 begin
-	ψ₀ = 10
-	A = 10
-	δ = 10
+	function Base(x)
+		if 1/4 < x < 2/4
+			return(4*(x-1/4))
+		end
+		if x == 1/2
+			return 1
+		end 
+		if 2/4 < x < 3/4
+			return(-4*(x-2/4)+1)
+		end
+		return 0
+	end
+	plot(0:0.005:1,Base.(0:0.005:1),label="", color="red",title="Función base",xlabel ="Dominio",xticks=(0:1/4:1, ["0", "1/4", "2/4", "3/4", "1"]),yticks=([0,1],[0,1]))
 end
 
-# ╔═╡ b9f1f8a7-a533-421d-856b-5a4ff40d3e85
-function SolNum1P(M)
+# ╔═╡ 67bfab5e-f29d-4847-9961-b079babf59ef
+md"""
+- **Formulación de Galerkin**. Si tomamos $V$ como el espacio lineal generado por las funciones $\phi_{\ell}$ con $\ell=1,\ldots,n-1$ (teniendo en cuenta que se necesita que se anulen en el conjunto $\partial\Omega$) entonces se tiene la formulación de Galerkin: Encontrar $\alpha_{\ell}$ con $\ell=0,1,\ldots,n$ tal que si $u(x) := \sum_{\ell=0}^{n}\alpha_{\ell}\phi_{\ell}(x)$ entonces para todo $i=1,\ldots,n-1$ se cumple que 
+
+$\sum_{\ell=0}^{n}\alpha_{\ell}\int_{\Omega}\phi_{\ell}'(x)\phi_{i}'(x)dx  =\int_{\Omega} \phi_{i}(x)dx.$
+
+Dado que $u(0)=u(1)=0$ entonces se tiene que $\alpha_{0} = \alpha_{n} =0$ por lo tanto, incorporando esta información de la condición de problema se puede reescribir la formulación de Galerkin: Encontrar $\alpha_{\ell}$ con $\ell=1,\ldots,n-1$ tal que si $u(x) := \sum_{\ell=1}^{n-1}\alpha_{\ell}\phi_{\ell}(x)$ entonces para todo $i=1,\ldots,n-1$ se cumple que 
+
+$\sum_{\ell=1}^{n-1}\alpha_{\ell}\int_{\Omega}\phi_{\ell}'(x)\phi_{i}'(x)dx  =\int_{\Omega} \phi_{i}(x)dx.$
+
+Si se define la matriz $A$ tal que $a_{ij} := \int_{\Omega}\phi_{j}'(x)\phi_{i}'(x)dx$ el vector $b$ tal que $b_{i} := \int_{\Omega} \phi_{i}(x)dx$ con $i,j=1,\ldots,n-1$, entonces el anterior problema se reduce a hallar $\boldsymbol{\alpha}:= (\alpha_{1},\ldots,\alpha_{n-1})^{T}$ del sistema lineal $A\boldsymbol{\alpha} = b$.
+
+
+Un elemento finito se define como $K_i := (x_{i-1},x_{i})$ para $i=1,\ldots,n$ de esta forma, los elementos finitos $K_{i}$ son disyuntos dos a dos y además $\bigcup_{i=1}^{n}cl(K_{i}) = \Omega$.
+
+En resumen, el método de los elementos finitos transformó el problema de hallar $u$ tal que $- u''(x) = 1, \ x\in(0,1)$ y $u(0) = u(1) =0$ en un problema lineal.
+"""
+
+# ╔═╡ be0effe6-09e3-4fc8-991f-c54080060629
+md"""
+# Ejemplo
+"""
+
+# ╔═╡ 382afed9-e537-4624-a7a7-fb19d8db0f76
+md"""
+Para implementar FEM como se mostró anteriormente, consideramos el dominio $\Omega :=[0,1]$ partido por los puntos $x_{i}:=\frac{i}{4}$ para $i=0,1,2,3,4$ (en este caso $n=4$).
+"""
+
+# ╔═╡ 190e967a-7e90-44c0-a4ed-2efd73766c1b
+md"""
+Como se dedujo en la sección anterior la idea es hallar el vector $\boldsymbol{\alpha}$ del sistema lineal que involucra información sobre la ecuación diferencial y las condiciones de frontera. Por construcción, los valores $\alpha_{\ell}$ representan el valor que toma la solución cuando se evalúa sobre los puntos de la partición, como se muestra en el gráfico a continuación.
+"""
+
+# ╔═╡ 862b9125-96da-41db-962e-45999d4391d7
+begin
+	yaux = [0.0,0.09375,0.125,0.09375,0.0]
+	scatter([0,1/4,2/4,3/4,1],yaux,color="red",label="",title="Representación de la solución",xticks=(0:1/4:1, ["0", "1/4", "2/4", "3/4", "1"]),yticks=false, xlim=[-0.1,1.1], ylim=[-0.1,0.2])
+	plot!([0,1/4,2/4,3/4,1], yaux, color="red", seriestype = :path, linestyle = :dash, label="")
+	annotate!(0+0.115, yaux[1], text("(0,α₀)", :right))
+	annotate!(1/4+0.165, yaux[2], text("(1/4,α₁)", :right))
+	annotate!(2/4+0.165, yaux[3], text("(2/4,α₂)", :right))
+	annotate!(3/4+0.165, yaux[4], text("(3/4,α₃)", :right))
+	annotate!(1+0.115, yaux[5], text("(1,α₄)", :right))
+end
+
+# ╔═╡ 780fffe1-22c9-4dd2-9f47-8a14b36579f5
+md"""
+Recordemos que para construir $A$ y $b$ se tiene que hacer integrales sobre todo el dominio $\Omega$; para hacer esta integración usamos cuadratura de Gauss a tres puntos, que busca calcular la integral de una función como una combinación lineal de la función evaluada en ciertos puntos con ciertos coeficientes de tal combinación. A continuación se tienen los pesos $\omega_r$ y los puntos de evaluación $\xi_r$ cuando se está integrando sobre el intervalo $[-1,1]$.
+"""
+
+# ╔═╡ 63512349-ab79-4233-825f-c92a52f6f475
+begin
+	ω_r = [5/9,8/9, 5/9]
+	ζ_r = [-sqrt(3/5),0,+sqrt(3/5)]
+end
+
+# ╔═╡ 91f32d1a-c207-47a1-8e7b-e87aedb0081a
+md"""
+Cuando se integra sobre el intervalo $[a,b]$ basta con reescalar los anteriores pesos y puntos de evaluación mediante una transformación que pase de $[-1,1]$ a $[a,b]$.
+
+
+En el siguiente fragmento de código se declaran las matrices globales $A$ y $b$ sin rellenar sus entradas. Se considera $A\in \mathbb{R}^{(4+1)\times(4+1)}$ con $a_{i+1,j+1}: =\int_{\Omega}\phi_{j}'(x)\phi_{i}'(x)dx$ para $i,j=0,1,2,3,4$, y, $b\in\mathbb{R}^{4+1}$ con $b_{i+1} := \int_{\Omega}\phi_{i}(x)dx$ para $i=0,1,2,3,4$.
+"""
+
+# ╔═╡ 96535eeb-56ca-47b8-b5d8-3944e4e50ed1
+begin
+	A = zeros(4+1,4+1)
+	b = zeros(4+1,1)
+end
+
+# ╔═╡ f84b1b4a-2f74-4015-9373-4538c2c1628a
+md"""
+Ahora, de manera informal se puede afirmar que $\int_{\Omega} = \sum_{i}\int_{K_{i}}$, es decir, que una integral sobre todo el dominio se puede considerar como una suma de integrales donde la suma recorre cada elemento finito; esto permite realizar de manera más sencilla el cálculo de las integrales sobre $\Omega$. Es por eso, que la iteración se hace sobre el número de elementos finitos definidos. 
+
+El proceso iterativo está compuesto de las siguientes partes:
+- **Definición del elemento**. Para cada elemento se define el punto de inicio y el punto de finalización, recordando que $K_{i} = (x_{i-1},x_{i}) = \left(\frac{i-1}{n},\frac{i}{n}\right)$. También se define $h$ como el tamaño del elemento.
+- **Pesos y puntos de cuadratura locales**. En este paso se transforman los pesos y puntos de evaluación de la cuadratura de Gauss para poder realizar la integración numérica sobre el elemento $i$-ésimo.
+- **Funciones base locales**. Se evalúan las funciones base y sus derivadas en los puntos de evaluación de la integración numérica. Recordemos que, dado que nuestras funciones base son lineales a trozos, en cada elemento hay parte de dos funciones base, una recta creciente y una recta decreciente.
+- **Grados de libertad**. Se construye el vector de grados de libertad. Este representa la información global de cada elemento y cómo esta se ubicará en las matrices $A$ y $b$ del sistema global.
+- **Submatrices locales**. En esta sección se hace la integración numérica correspondiente a las entradas de $A$ y de $b$, respectivamente.  
+- **Ensamblamiento de matrices globales**. Usando los grados de libertad para posicionar de manera correcta la información, se añade a las matrices $A$ y $b$ el aporte de información que hizo el elemento sobre el cuál se está evaluando las integrales. 
+
+En la siguiente celda se ejecuta la iteración.
+"""
+
+# ╔═╡ 30a7676d-b7c3-4470-9ae4-4c441dd8c1c7
+for i=1:4 #Iteración por cada elemento
+	
+	#Definición del elemento
+	x0 = (i-1)/4
+	x1 = i/4
+	h  = x1-x0
+
+	#Pesos y puntos de cuadratura locales
+	ω = 0.5*(x1-x0)*ω_r
+	ζ = [x0,x0,x0]+ 0.5*([1,1,1]+ζ_r)*(h) 
+
+	#Funciones base locales
+	ϕ1  = ([x1,x1,x1]-ζ)/h 
+	ϕ2  = (ζ-[x0,x0,x0])/h 
+	∂ϕ1 = [-1,-1,-1]/h
+	∂ϕ2 = [1,1,1]/h
+
+	#Grados de libertad
+	dof = [i,i+1] 
+
+	#Submatrices locales
+	a11  = sum(ω.*∂ϕ1.*∂ϕ1)
+	a12  = sum(ω.*∂ϕ1.*∂ϕ2)
+	a21  = sum(ω.*∂ϕ2.*∂ϕ1)
+	a22  = sum(ω.*∂ϕ2.*∂ϕ2)
+	Aloc = [a11 a12; a21 a22]
+	bloc = [sum(ω.*ϕ1),sum(ω.*ϕ2)]
+
+	#Ensamblamiento de matrices globales   
+	A[dof,dof]  = A[dof,dof] + Aloc     
+	b[dof]      = b[dof] + bloc	 
+end
+
+# ╔═╡ d7e97215-9794-433e-b30c-5abe5187c6ca
+md"""
+Las matrices $A$ y $b$ se muestran a continuación.
+"""
+
+# ╔═╡ 5517c566-8ef2-4e94-959b-1d88ec1bebb6
+A
+
+# ╔═╡ bc1838e7-cf8d-4d9d-9c65-0231c0cd2276
+eigen(A[2:5,2:5])
+
+# ╔═╡ 034fe483-52f4-4437-802f-a8cf5fefadf0
+b
+
+# ╔═╡ d22432c7-e757-4ec1-9109-32abe0970276
+md"""
+Una vez construidas completamente las matrices $A$ y $b$ se procede a solucionar el sistema lineal teniendo en cuenta que los valores de $\boldsymbol{\alpha}$ que están asociados a la condición de frontera ya son conocidos.
+"""
+
+# ╔═╡ 7f72661c-dff3-40b7-868d-7b63dca04af7
+begin
+	solucion = zeros(4+1)
+	solucion[2:4] = A[2:4,2:4] \ b[2:4]
+end
+
+# ╔═╡ 47ef6dd4-6a9e-4c45-a7a1-ebc46d7bec23
+md"""
+La solución que se obtiene es el vector $\boldsymbol{\alpha} \in \mathbb{R}^{4+1}$.
+"""
+
+# ╔═╡ a3acf5c9-06e2-497e-bf27-ad6a116635c4
+solucion
+
+# ╔═╡ 2dd51352-5630-4d31-bd2b-a1a8bd3ce95e
+md"""
+Esta solución numérica se puede comparar con la solución analítica para notar que en la evaluación en los puntos de la partición ambas soluciones coinciden.
+"""
+
+# ╔═╡ c14f5065-23dd-401b-9e85-432e7f968e49
+[0.5 * x * (1-x) for x in 0:1/4:1]
+
+# ╔═╡ 40efe330-ecf0-4122-84f7-8a0a2030a9e9
+md"""
+Como se puede evidenciar en el siguiente gráfico, la solución numérica es una aproximación lineal de la solución analítica. Se espera que a medida que se incrementen los puntos de la partición, la solución numérica sea cada vez más cercana a la solución analítica.
+"""
+
+# ╔═╡ a4f37302-1001-4d2d-99c3-d3afb3dcf0a2
+begin
+	plot(0:1/4:1,solucion,label="Solución numérica", title="Método para cuatro elementos finitos")
+	plot!(0:1/1000:1, [0.5 * t * (1-t) for t in 0:1/1000:1] ,label="Solución analítica")
+end
+
+# ╔═╡ a4cbf274-3ffc-487b-85cf-d3575f87ed2b
+md"""
+En el siguiente código se declara una función en la cual se ejecuta el método anteriormente descrito para $n$ elementos finitos.
+"""
+
+# ╔═╡ b94a4d8d-2e21-4bd7-b70e-2724c968b064
+function SolNum(n)
 	#Pesos y puntos de integración numérica en [-1,1]
 	ω_r = [5/9,8/9, 5/9]
 	ζ_r = [-sqrt(15)/5,0,+sqrt(15)/5]
 
 	#Matrices resultantes de FEM
+	A=zeros(n+1,n+1)
+	b=zeros(n+1,1)
 	
-	D = zeros(M,M)
-	E = zeros(M,M)
-	b = zeros(M,1)
+	f= [1,1,1]
+	
+	for i=1:n #Iteración por cada elemento
 
-	
-	
-	for i=1:M #Iteración por cada elemento
-		f = [ψ₀,ψ₀,ψ₀]
 		#Definición del elemento
-		x0=2*π*(i-1)/M
-		x1=2*π*i/M
+		x0=(i-1)/n
+		x1=i/n
 		h=x1-x0
 
 		#Pesos y puntos de cuadratura locales
@@ -113,22 +289,14 @@ function SolNum1P(M)
 
 		#Grados de libertad locales
 		dof = [i,i+1] 
-		if i == M
-			dof = [M,1]
-		end
+
 		#Submatrices locales
 
-		d11  = sum(ω.*∂ϕ1.*∂ϕ1)
-	    d12  = sum(ω.*∂ϕ1.*∂ϕ2)
-	    d21  = sum(ω.*∂ϕ2.*∂ϕ1)
-	    d22  = sum(ω.*∂ϕ2.*∂ϕ2)
-		Dloc = [d11 d12; d21 d22]
-
-		e11  = sum(ω.*f.*ϕ1.*ϕ1)
-	    e12  = sum(ω.*f.*ϕ1.*ϕ2)
-	    e21  = sum(ω.*f.*ϕ2.*ϕ1)
-	    e22  = sum(ω.*f.*ϕ2.*ϕ2)
-		Eloc = [e11 e12; e21 e22]
+		a11  = sum(ω.*∂ϕ1.*∂ϕ1)
+	    a12  = sum(ω.*∂ϕ1.*∂ϕ2)
+	    a21  = sum(ω.*∂ϕ2.*∂ϕ1)
+	    a22  = sum(ω.*∂ϕ2.*∂ϕ2)
+		Aloc = [a11 a12; a21 a22]
 		
 	    b1   = sum(ω.*f.*ϕ1)
 	    b2   = sum(ω.*f.*ϕ2)
@@ -136,52 +304,50 @@ function SolNum1P(M)
 
 
 		#Ensamblamiento de matrices globales   
-		D[dof,dof]  = D[dof,dof] + Dloc
-		E[dof,dof]  = E[dof,dof] + Eloc
+		A[dof,dof]  = A[dof,dof] + Aloc     
 		b[dof]      = b[dof] + bloc	 
 	end
 
-	# T = [D -E; zeros(M,M) D]
-	# y = [(-A*ψ₀)*b; (A/δ)*b]
-		
-	#Solución del sistema lineal
-	#SolNum = T \ b
+	# Solución del sistema lineal
+	SolNum = zeros(n+1)
+	SolNum[2:n] = A[2:n,2:n] \ b[2:n]
 
-	return(D)
+	return(SolNum)
 end
 
-# ╔═╡ 31ce9748-4ab9-445c-9c61-cafadfbf0902
-SolNum1P(4)
-
-# ╔═╡ f5325b56-23cf-42ad-af02-9e10e73a754a
-eigen(SolNum1P(4))
-
-# ╔═╡ 1308ac4c-3bad-4bb8-a691-b7d25b01208f
-eigen(SolNum1P(4)[2:4,2:4])
-
-# ╔═╡ d972887c-2dcb-4d1f-92d5-4aa5a4c4f92f
-
-
-# ╔═╡ 7d9250ae-b88c-4f9d-a972-11e309fcc915
-
-
-# ╔═╡ 5f50b8cd-1931-4b4a-856c-6b9395694595
+# ╔═╡ 69d273c1-6cf2-44ba-8123-fd77f9467f97
 md"""
-## Newton's method
+Con el siguiente deslizador se puede evidenciar que a medida que aumenta el número de elementos finitos en consideración, la solución numérica se vuelve más certera en comparación con la solución analítica.
 """
 
-# ╔═╡ 9f41b617-1546-4569-a42b-806d37e9ba41
-md"""
-**Newton's formulation**
+# ╔═╡ 5a12ba7b-333e-472a-83f4-a7c82c97e2a2
+NSlider = @bind N Slider(2:10, show_value=true, default=2)
 
-$(N)\begin{cases}
-\int_{0}^{2\pi}k'(t)p'(t)dt = \int_{0}^{2\pi} - A[h(t)(1+\phi_n(t)) + k(t)(\gamma+\gamma\phi_n(t))]p(t)dt\\
-\int_{0}^{2\pi}h'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} \gamma k(t)q(t)dt\\
-\end{cases}$
+# ╔═╡ 5a70c8ff-ea58-4af2-b432-cf8b750da838
+begin
+	plot(0:1/N:1,SolNum(N),label="Solución numérica")
+	plot!(0:1/1000:1, [0.5 * t * (1-t) for t in 0:1/1000:1] ,label="Solución analítica")
+end
+
+# ╔═╡ c98b912f-5d21-4c58-8245-cf918555fa98
+SolNum(N)
+
+# ╔═╡ c7d254fe-7396-4fa1-a303-cb3cb6779738
+md"""
+En esta explicación básica se hizo una revisión rápida del método de elementos finitos para una dimensión; consideraciones como linealidad en la ecuación diferencial, tipo de condiciones de contorno, tipo de funciones base, programación del método no fueron discutidas dado que iban más allá del propósito de este cuaderno. Se invita a consultar las referencias.
 """
 
-# ╔═╡ a2d59f56-71ca-433b-8c30-0e9aff3f44ba
+# ╔═╡ dd3a7041-83fa-4bc5-b2ac-46bb35a4895d
+md"""
+# Referencias
+"""
 
+# ╔═╡ af57d245-b05b-4921-a943-ddb0664d2106
+md"""
+[1] Johnson, Claes. Numerical Solution of Partial Differential Equations by the Finite Element Method. Courier Corporation, 2012.
+
+[2] Whiteley, Jonathan. Finite Element Methods. Springer International Publishing, 2017. DOI.org (Crossref), https://doi.org/10.1007/978-3-319-49971-0.
+"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -189,9 +355,10 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-Plots = "~1.40.9"
+Plots = "~1.40.8"
 PlutoUI = "~0.7.60"
 """
 
@@ -201,7 +368,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "b207cf39908fc1f7a95857054fddac0ea5de687b"
+project_hash = "e5167c9de8abafd05c3a8eca54dece001dc2028b"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -226,15 +393,15 @@ version = "0.1.9"
 
 [[deps.Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "8873e196c2eb87962a2048b3b8e08946535864a1"
+git-tree-sha1 = "9e2a6b69137e6969bab0152632dcb3bc108c8bdd"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
-version = "1.0.8+2"
+version = "1.0.8+1"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "009060c9a6168704143100f36ab08f06c2af4642"
+git-tree-sha1 = "a2f1c8c668c8e3cb4cca4e57a8efdb09067bb3fd"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
-version = "1.18.2+1"
+version = "1.18.0+2"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -244,9 +411,9 @@ version = "0.7.6"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "c785dfb1b3bfddd1da557e861b919819b82bbe5b"
+git-tree-sha1 = "b5278586822443594ff615963b0c09755771b3e0"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.27.1"
+version = "3.26.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -268,9 +435,9 @@ version = "0.10.0"
 
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
-git-tree-sha1 = "64e15186f0aa277e174aa81798f7eb8598e0157e"
+git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.13.0"
+version = "0.12.11"
 
 [[deps.Compat]]
 deps = ["TOML", "UUIDs"]
@@ -344,21 +511,21 @@ version = "0.0.20230411+0"
 
 [[deps.ExceptionUnwrapping]]
 deps = ["Test"]
-git-tree-sha1 = "d36f682e590a83d63d1c7dbd287573764682d12a"
+git-tree-sha1 = "dcb08a0d93ec0b1cdc4af184b26b591e9695423a"
 uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
-version = "0.1.11"
+version = "0.1.10"
 
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "cc5231d52eb1771251fbd37171dbc408bcc8a1b6"
+git-tree-sha1 = "1c6317308b9dc757616f0b5cb379db10494443a7"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.6.4+0"
+version = "2.6.2+0"
 
 [[deps.FFMPEG]]
 deps = ["FFMPEG_jll"]
-git-tree-sha1 = "53ebe7511fa11d33bec688a9178fac4e49eeee00"
+git-tree-sha1 = "b57e3acbe22f8484b4b5ff66a7499717fe1a9cc8"
 uuid = "c87230d0-a227-11e9-1b43-d7ebe4e7570a"
-version = "0.4.2"
+version = "0.4.1"
 
 [[deps.FFMPEG_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "PCRE2_jll", "Zlib_jll", "libaom_jll", "libass_jll", "libfdk_aac_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
@@ -388,9 +555,9 @@ version = "1.3.7"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "fa8e19f44de37e225aa0f1695bc223b05ed51fb4"
+git-tree-sha1 = "5c1d8ae0efc6c2e7b1fc502cbe25def8f661b7bc"
 uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
-version = "2.13.3+0"
+version = "2.13.2+0"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -406,15 +573,15 @@ version = "3.4.0+1"
 
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Preferences", "Printf", "Qt6Wayland_jll", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "p7zip_jll"]
-git-tree-sha1 = "ee28ddcd5517d54e417182fec3886e7412d3926f"
+git-tree-sha1 = "629693584cef594c3f6f99e76e7a7ad17e60e8d5"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.73.8"
+version = "0.73.7"
 
 [[deps.GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "FreeType2_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Qt6Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "f31929b9e67066bee48eec8b03c0df47d31a74b3"
+git-tree-sha1 = "a8863b69c2a0859f2c2c87ebdc4c6712e88bdf0d"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.73.8+0"
+version = "0.73.7+0"
 
 [[deps.Gettext_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "XML2_jll"]
@@ -424,15 +591,15 @@ version = "0.21.0+0"
 
 [[deps.Glib_jll]]
 deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE2_jll", "Zlib_jll"]
-git-tree-sha1 = "b36c7e110080ae48fdef61b0c31e6b17ada23b33"
+git-tree-sha1 = "7c82e6a6cd34e9d935e9aa4051b66c6ff3af59ba"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.82.2+0"
+version = "2.80.2+0"
 
 [[deps.Graphite2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "01979f9b37367603e2848ea225918a3b3861b606"
+git-tree-sha1 = "344bf40dcab1073aca04aa0df4fb092f920e4011"
 uuid = "3b182d85-2403-5c21-9c21-1e1f0cc25472"
-version = "1.3.14+1"
+version = "1.3.14+0"
 
 [[deps.Grisu]]
 git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
@@ -440,10 +607,10 @@ uuid = "42e2da0e-8278-4e71-bc24-59509adca0fe"
 version = "1.0.2"
 
 [[deps.HTTP]]
-deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "PrecompileTools", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "ae350b8225575cc3ea385d4131c81594f86dfe4f"
+deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
+git-tree-sha1 = "d1d712be3164d61d1fb98e7ce9bcbc6cc06b45ed"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.12"
+version = "1.10.8"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll"]
@@ -480,15 +647,15 @@ version = "0.2.2"
 
 [[deps.JLFzf]]
 deps = ["Pipe", "REPL", "Random", "fzf_jll"]
-git-tree-sha1 = "71b48d857e86bf7a1838c4736545699974ce79a2"
+git-tree-sha1 = "39d64b09147620f5ffbf6b2d3255be3c901bec63"
 uuid = "1019f520-868f-41f5-a6de-eb00f4b6a39c"
-version = "0.1.9"
+version = "0.1.8"
 
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
-git-tree-sha1 = "be3dc50a92e5a386872a493a10050136d4703f9b"
+git-tree-sha1 = "f389674c99bfcde17dc57454011aa44d5a260a40"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.6.1"
+version = "1.6.0"
 
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -498,9 +665,9 @@ version = "0.21.4"
 
 [[deps.JpegTurbo_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "25ee0be4d43d0269027024d75a24c24d6c6e590c"
+git-tree-sha1 = "c84a835e1a09b289ffcd2271bf2a337bbdda6637"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
-version = "3.0.4+0"
+version = "3.0.3+0"
 
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -509,27 +676,27 @@ uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
 version = "3.100.2+0"
 
 [[deps.LERC_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "36bdbc52f13a7d1dcb0f3cd694e01677a515655b"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "bf36f528eec6634efc60d7ec062008f171071434"
 uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
-version = "4.0.0+0"
+version = "3.0.0+1"
 
 [[deps.LLVMOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "78211fb6cbc872f77cad3fc0b6cf647d923f4929"
+git-tree-sha1 = "e16271d212accd09d52ee0ae98956b8a05c4b626"
 uuid = "1d63c593-3942-5779-bab2-d838dc0a180e"
-version = "18.1.7+0"
+version = "17.0.6+0"
 
 [[deps.LZO_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "854a9c268c43b77b0a27f22d7fab8d33cdb3a731"
+git-tree-sha1 = "70c5da094887fd2cae843b8db33920bac4b6f07d"
 uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
-version = "2.10.2+1"
+version = "2.10.2+0"
 
 [[deps.LaTeXStrings]]
-git-tree-sha1 = "dda21b8cbd6a6c40d9d02a73230f9d70fed6918c"
+git-tree-sha1 = "50901ebc375ed41dbf8058da26f9de442febbbec"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-version = "1.4.0"
+version = "1.3.1"
 
 [[deps.Latexify]]
 deps = ["Format", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
@@ -577,9 +744,9 @@ version = "3.2.2+1"
 
 [[deps.Libgcrypt_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll"]
-git-tree-sha1 = "8be878062e0ffa2c3f67bb58a595375eda5de80b"
+git-tree-sha1 = "9fd170c4bbfd8b935fdc5f8b7aa33532c991a673"
 uuid = "d4300ac3-e22c-5743-9152-c294e39db1e4"
-version = "1.11.0+0"
+version = "1.8.11+0"
 
 [[deps.Libglvnd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll", "Xorg_libXext_jll"]
@@ -589,33 +756,33 @@ version = "1.6.0+0"
 
 [[deps.Libgpg_error_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "c6ce1e19f3aec9b59186bdf06cdf3c4fc5f5f3e6"
+git-tree-sha1 = "fbb1f2bef882392312feb1ede3615ddc1e9b99ed"
 uuid = "7add5ba3-2f88-524e-9cd5-f83b8a55f7b8"
-version = "1.50.0+0"
+version = "1.49.0+0"
 
 [[deps.Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "61dfdba58e585066d8bce214c5a51eaa0539f269"
+git-tree-sha1 = "f9557a255370125b405568f9767d6d195822a175"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.17.0+1"
+version = "1.17.0+0"
 
 [[deps.Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "84eef7acd508ee5b3e956a2ae51b05024181dee0"
+git-tree-sha1 = "0c4f9c4f1a50d8f35048fa0532dabbadf702f81e"
 uuid = "4b2f31a3-9ecc-558c-b454-b3730dcb73e9"
-version = "2.40.2+0"
+version = "2.40.1+0"
 
 [[deps.Libtiff_jll]]
 deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "LERC_jll", "Libdl", "XZ_jll", "Zlib_jll", "Zstd_jll"]
-git-tree-sha1 = "b404131d06f7886402758c9ce2214b636eb4d54a"
+git-tree-sha1 = "2da088d113af58221c52828a80378e16be7d037a"
 uuid = "89763e89-9b03-5906-acba-b20f662cd828"
-version = "4.7.0+0"
+version = "4.5.1+1"
 
 [[deps.Libuuid_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "edbf5309f9ddf1cab25afc344b1e8150b7c832f9"
+git-tree-sha1 = "5ee6203157c120d79034c748a2acba45b82b8807"
 uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
-version = "2.40.2+0"
+version = "2.40.1+0"
 
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
@@ -642,9 +809,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[deps.LoggingExtras]]
 deps = ["Dates", "Logging"]
-git-tree-sha1 = "f02b56007b064fbfddb4c9cd60161b6dd0f40df3"
+git-tree-sha1 = "c1dd6d7978c12545b4179fb6153b9250c96b0075"
 uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
-version = "1.1.0"
+version = "1.0.3"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
@@ -724,9 +891,9 @@ version = "1.4.3"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "7493f61f55a6cce7325f197443aa80d32554ba10"
+git-tree-sha1 = "a028ee3cb5641cccc4c24e90c36b0a4f7707bdf5"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "3.0.15+1"
+version = "3.0.14+0"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -735,9 +902,9 @@ uuid = "91d4177d-7536-5919-b921-800302f37372"
 version = "1.3.3+0"
 
 [[deps.OrderedCollections]]
-git-tree-sha1 = "12f1439c4f986bb868acda6ea33ebc78e19b95ad"
+git-tree-sha1 = "dfdf5519f235516220579f949664f1bf44e741c5"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.7.0"
+version = "1.6.3"
 
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -774,21 +941,21 @@ version = "1.9.2"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
-git-tree-sha1 = "41031ef3a1be6f5bbbf3e8073f210556daeae5ca"
+git-tree-sha1 = "6e55c6841ce3411ccb3457ee52fc48cb698d6fb0"
 uuid = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
-version = "3.3.0"
+version = "3.2.0"
 
 [[deps.PlotUtils]]
-deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random", "Reexport", "StableRNGs", "Statistics"]
-git-tree-sha1 = "3ca9a356cd2e113c420f2c13bea19f8d3fb1cb18"
+deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random", "Reexport", "Statistics"]
+git-tree-sha1 = "7b1a9df27f072ac4c9c7cbe5efb198489258d1f5"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "1.4.3"
+version = "1.4.1"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "TOML", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "dae01f8c2e069a683d3a6e17bbae5070ab94786f"
+git-tree-sha1 = "45470145863035bb124ca51b320ed35d071cc6c2"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.40.9"
+version = "1.40.8"
 
     [deps.Plots.extensions]
     FileIOExt = "FileIO"
@@ -907,9 +1074,9 @@ uuid = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
 version = "1.0.3"
 
 [[deps.SimpleBufferStream]]
-git-tree-sha1 = "f305871d2f381d21527c770d4788c06c097c9bc1"
+git-tree-sha1 = "874e8867b33a00e784c8a7e4b60afe9e037b74e1"
 uuid = "777ac1f9-54b0-4bf8-805c-2214025038e7"
-version = "1.2.0"
+version = "1.1.0"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
@@ -923,12 +1090,6 @@ version = "1.2.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-
-[[deps.StableRNGs]]
-deps = ["Random"]
-git-tree-sha1 = "83e6cce8324d49dfaf9ef059227f91ed4441a8e5"
-uuid = "860ef19b-820b-49d6-a774-d7a799459cd3"
-version = "1.0.2"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -973,9 +1134,9 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.TranscodingStreams]]
-git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
+git-tree-sha1 = "e84b3a11b9bece70d14cce63406bbc79ed3464d2"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.11.3"
+version = "0.11.2"
 
 [[deps.Tricks]]
 git-tree-sha1 = "7822b97e99a1672bfb1b49b668a6d46d58d8cbcb"
@@ -1045,21 +1206,21 @@ version = "1.31.0+0"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "a2fccc6559132927d4c5dc183e3e01048c6dcbd6"
+git-tree-sha1 = "1165b0443d0eca63ac1e32b8c0eb69ed2f4f8127"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.13.5+0"
+version = "2.13.3+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "XML2_jll", "Zlib_jll"]
-git-tree-sha1 = "7d1671acbe47ac88e981868a078bd6b4e27c5191"
+git-tree-sha1 = "a54ee957f4c86b526460a720dbc882fa5edcbefc"
 uuid = "aed1982a-8fda-507f-9586-7b0439959a61"
-version = "1.1.42+0"
+version = "1.1.41+0"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "15e637a697345f6743674f1322beefbc5dcd5cfc"
+git-tree-sha1 = "ac88fb95ae6447c8dda6a5503f3bafd496ae8632"
 uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.6.3+0"
+version = "5.4.6+0"
 
 [[deps.Xorg_libICE_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1081,9 +1242,9 @@ version = "1.8.6+0"
 
 [[deps.Xorg_libXau_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "2b0e27d52ec9d8d483e2ca0b72b3cb1a8df5c27a"
+git-tree-sha1 = "6035850dcc70518ca32f012e46015b9beeda49d8"
 uuid = "0c0b7dd1-d40b-584c-a123-a41640f87eec"
-version = "1.0.11+1"
+version = "1.0.11+0"
 
 [[deps.Xorg_libXcursor_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXfixes_jll", "Xorg_libXrender_jll"]
@@ -1093,9 +1254,9 @@ version = "1.2.0+4"
 
 [[deps.Xorg_libXdmcp_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "02054ee01980c90297412e4c809c8694d7323af3"
+git-tree-sha1 = "34d526d318358a859d7de23da945578e8e8727b7"
 uuid = "a3789734-cfe1-5b06-b2d0-1dd0d9d62d05"
-version = "1.1.4+1"
+version = "1.1.4+0"
 
 [[deps.Xorg_libXext_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libX11_jll"]
@@ -1135,9 +1296,9 @@ version = "0.9.11+0"
 
 [[deps.Xorg_libpthread_stubs_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "fee57a273563e273f0f53275101cd41a8153517a"
+git-tree-sha1 = "8fdda4c692503d44d04a0603d9ac0982054635f9"
 uuid = "14d82f49-176c-5ed1-bb49-ad3f5cbd8c74"
-version = "0.1.1+1"
+version = "0.1.1+0"
 
 [[deps.Xorg_libxcb_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "XSLT_jll", "Xorg_libXau_jll", "Xorg_libXdmcp_jll", "Xorg_libpthread_stubs_jll"]
@@ -1201,9 +1362,9 @@ version = "2.39.0+0"
 
 [[deps.Xorg_xtrans_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "b9ead2d2bdb27330545eb14234a2e300da61232e"
+git-tree-sha1 = "e92a1a012a10506618f10b7047e478403a046c77"
 uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
-version = "1.5.0+1"
+version = "1.5.0+0"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
@@ -1212,9 +1373,9 @@ version = "1.2.13+0"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "555d1076590a6cc2fdee2ef1469451f872d8b41b"
+git-tree-sha1 = "e678132f07ddb5bfa46857f0d7620fb9be675d3b"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
-version = "1.5.6+1"
+version = "1.5.6+0"
 
 [[deps.eudev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "gperf_jll"]
@@ -1224,9 +1385,9 @@ version = "3.2.9+0"
 
 [[deps.fzf_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6e50f145003024df4f5cb96c7fce79466741d601"
+git-tree-sha1 = "936081b536ae4aa65415d869287d43ef3cb576b2"
 uuid = "214eeab7-80f7-51ab-84ad-2988db7cef09"
-version = "0.56.3+0"
+version = "0.53.0+0"
 
 [[deps.gperf_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1277,9 +1438,9 @@ version = "1.18.0+0"
 
 [[deps.libpng_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "b70c870239dc3d7bc094eb2d6be9b73d27bef280"
+git-tree-sha1 = "d7015d2e18a5fd9a4f47de711837e980519781a4"
 uuid = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
-version = "1.6.44+0"
+version = "1.6.43+1"
 
 [[deps.libvorbis_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Ogg_jll", "Pkg"]
@@ -1323,26 +1484,45 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╟─a9208590-a822-11ef-04a1-735c2a12a98a
-# ╟─2322aa25-07bf-46c2-9e74-6ecf2255026a
-# ╟─8587302a-08ed-4add-88be-8df3e334c539
-# ╟─d8f6f94a-a8d3-4f22-a0eb-e4a144f47e37
-# ╠═1feb3ab7-a77f-454a-aaa7-9fdb087e680b
-# ╟─6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
-# ╟─6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
-# ╟─b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
-# ╟─22099ce3-7655-4652-8e6c-540de4c61548
-# ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
-# ╟─89414081-c3ad-42b8-a409-166eac20764f
-# ╠═097d2cec-1f08-4f45-9112-04a1687230ed
-# ╠═b9f1f8a7-a533-421d-856b-5a4ff40d3e85
-# ╠═31ce9748-4ab9-445c-9c61-cafadfbf0902
-# ╠═f5325b56-23cf-42ad-af02-9e10e73a754a
-# ╠═1308ac4c-3bad-4bb8-a691-b7d25b01208f
-# ╠═d972887c-2dcb-4d1f-92d5-4aa5a4c4f92f
-# ╠═7d9250ae-b88c-4f9d-a972-11e309fcc915
-# ╟─5f50b8cd-1931-4b4a-856c-6b9395694595
-# ╟─9f41b617-1546-4569-a42b-806d37e9ba41
-# ╠═a2d59f56-71ca-433b-8c30-0e9aff3f44ba
+# ╟─3bb49ee0-7214-11ef-3f41-49a947722368
+# ╟─3292afbc-ac3f-4a49-815e-6359a52964b2
+# ╠═b18d1570-e108-4655-9527-4a4b957c9825
+# ╟─d82a0a0a-29af-4219-ba1b-74f7a80e836c
+# ╟─9a656424-4a32-4efd-bf9f-b2c1654870b8
+# ╟─e32bc9ef-f622-4d40-b715-5f5fe4eaa54d
+# ╟─eab955a4-a296-41aa-844d-b118af60853f
+# ╟─9292b301-ab0b-4bcb-978f-4b02b304c898
+# ╟─67bfab5e-f29d-4847-9961-b079babf59ef
+# ╟─be0effe6-09e3-4fc8-991f-c54080060629
+# ╟─382afed9-e537-4624-a7a7-fb19d8db0f76
+# ╟─190e967a-7e90-44c0-a4ed-2efd73766c1b
+# ╟─862b9125-96da-41db-962e-45999d4391d7
+# ╟─780fffe1-22c9-4dd2-9f47-8a14b36579f5
+# ╟─63512349-ab79-4233-825f-c92a52f6f475
+# ╟─91f32d1a-c207-47a1-8e7b-e87aedb0081a
+# ╠═96535eeb-56ca-47b8-b5d8-3944e4e50ed1
+# ╟─f84b1b4a-2f74-4015-9373-4538c2c1628a
+# ╠═30a7676d-b7c3-4470-9ae4-4c441dd8c1c7
+# ╟─d7e97215-9794-433e-b30c-5abe5187c6ca
+# ╠═5517c566-8ef2-4e94-959b-1d88ec1bebb6
+# ╠═bc1838e7-cf8d-4d9d-9c65-0231c0cd2276
+# ╠═034fe483-52f4-4437-802f-a8cf5fefadf0
+# ╟─d22432c7-e757-4ec1-9109-32abe0970276
+# ╠═7f72661c-dff3-40b7-868d-7b63dca04af7
+# ╟─47ef6dd4-6a9e-4c45-a7a1-ebc46d7bec23
+# ╠═a3acf5c9-06e2-497e-bf27-ad6a116635c4
+# ╟─2dd51352-5630-4d31-bd2b-a1a8bd3ce95e
+# ╠═c14f5065-23dd-401b-9e85-432e7f968e49
+# ╟─40efe330-ecf0-4122-84f7-8a0a2030a9e9
+# ╟─a4f37302-1001-4d2d-99c3-d3afb3dcf0a2
+# ╟─a4cbf274-3ffc-487b-85cf-d3575f87ed2b
+# ╠═b94a4d8d-2e21-4bd7-b70e-2724c968b064
+# ╟─69d273c1-6cf2-44ba-8123-fd77f9467f97
+# ╟─5a12ba7b-333e-472a-83f4-a7c82c97e2a2
+# ╟─5a70c8ff-ea58-4af2-b432-cf8b750da838
+# ╠═c98b912f-5d21-4c58-8245-cf918555fa98
+# ╟─c7d254fe-7396-4fa1-a303-cb3cb6779738
+# ╟─dd3a7041-83fa-4bc5-b2ac-46bb35a4895d
+# ╟─af57d245-b05b-4921-a943-ddb0664d2106
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
