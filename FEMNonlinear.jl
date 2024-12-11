@@ -11,6 +11,7 @@ using PlutoUI
 begin
 	using Plots
 	using LinearAlgebra
+	using Statistics
 end
 
 # ╔═╡ 2322aa25-07bf-46c2-9e74-6ecf2255026a
@@ -43,6 +44,9 @@ $(S)\begin{cases}
 \end{cases}$
 """
 
+# ╔═╡ 89763b3b-69c4-40da-b060-7eeb0e4b86f7
+
+
 # ╔═╡ b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
 md"""
 **Weak formulation**
@@ -53,6 +57,9 @@ $(W)\begin{cases}
 \end{cases}$
 """
 
+# ╔═╡ 733e9c4f-d122-46a9-a908-14e2fc4867ea
+
+
 # ╔═╡ 22099ce3-7655-4652-8e6c-540de4c61548
 md"""
 # Implementation
@@ -61,6 +68,11 @@ md"""
 # ╔═╡ 85e8541b-b1dc-423b-b8f2-a3dee5e51992
 md"""
 ## Picard's method
+"""
+
+# ╔═╡ 05c8fb62-ba89-46c5-b182-8999ea519d06
+md"""
+Given an initial aproximation $\psi_i$ y $\phi_i$, we build the sequences $\{\psi_{n}\}$ and $\{\phi_{n}\}$ in the following way: Given $\psi_n$ and $\phi_n$, the functions $\psi_{n+1}$ and $\phi_{n+1}$ are defined as the functions satisfying the following equations for all test functions $p$ and $q$:
 """
 
 # ╔═╡ 89414081-c3ad-42b8-a409-166eac20764f
@@ -73,11 +85,28 @@ $(P)\begin{cases}
 \end{cases}$
 """
 
+# ╔═╡ 2269f1c8-26e3-4426-8037-756566fb9d63
+md"""
+If we represent the unknown functions as
+
+$\phi_{n+1}(t) = \sum_{j=0}^{M}h_{j}b_{j}(t)$
+
+$\psi_{n+1}(t) = \sum_{j=0}^{M}k_{j}b_{j}(t)$
+
+where $M$ is a positive integer, $h_0 = h_M$ and $k_0 = k_M$, we can write the previous equations as
+
+$D h = (-A)Ek +(-A\psi_0)b$
+
+$D k = \frac{A}{\delta}b$
+
+where
+"""
+
 # ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
 begin
-	ψ₀ = 10
-	A = 10
-	δ = 10
+	ψ₀ = 1
+	A = 1
+	δ = 1
 end
 
 # ╔═╡ b9f1f8a7-a533-421d-856b-5a4ff40d3e85
@@ -99,17 +128,17 @@ function SolNum1P(M)
 		#Definición del elemento
 		x0=2*π*(i-1)/M
 		x1=2*π*i/M
-		h=x1-x0
+		Δ=x1-x0
 
 		#Pesos y puntos de cuadratura locales
 		ω = 0.5*(x1-x0)*ω_r
-		ζ = [x0,x0,x0]+ 0.5*([1,1,1]+ζ_r)*(h) 
+		ζ = [x0,x0,x0]+ 0.5*([1,1,1]+ζ_r)*(Δ) 
 
 		#Funciones base locales
-		ϕ1  = ([x1,x1,x1]-ζ)/h 
-		ϕ2  = (ζ-[x0,x0,x0])/h 
-		∂ϕ1 = [-1,-1,-1]/h
-		∂ϕ2 = [1,1,1]/h
+		ϕ1  = ([x1,x1,x1]-ζ)/Δ 
+		ϕ2  = (ζ-[x0,x0,x0])/Δ 
+		∂ϕ1 = [-1,-1,-1]/Δ
+		∂ϕ2 = [1,1,1]/Δ
 
 		#Grados de libertad locales
 		dof = [i,i+1] 
@@ -117,7 +146,6 @@ function SolNum1P(M)
 			dof = [M,1]
 		end
 		#Submatrices locales
-
 		d11  = sum(ω.*∂ϕ1.*∂ϕ1)
 	    d12  = sum(ω.*∂ϕ1.*∂ϕ2)
 	    d21  = sum(ω.*∂ϕ2.*∂ϕ1)
@@ -134,40 +162,128 @@ function SolNum1P(M)
 	    b2   = sum(ω.*f.*ϕ2)
 		bloc = [b1,b2]
 
-
 		#Ensamblamiento de matrices globales   
 		D[dof,dof]  = D[dof,dof] + Dloc
 		E[dof,dof]  = E[dof,dof] + Eloc
 		b[dof]      = b[dof] + bloc	 
 	end
 
-	# T = [D -E; zeros(M,M) D]
-	# y = [(-A*ψ₀)*b; (A/δ)*b]
-		
-	#Solución del sistema lineal
-	#SolNum = T \ b
+	T = [D -E; zeros(M,M) D]
+	k = zeros(M+1,1)
+	h = zeros(M+1,1)
 
-	return(D)
+	k[2:M] = D[2:M,2:M] \ ((A/δ)*b[2:M])
+	h[2:M] = D[2:M,2:M] \ (-A*E[2:M,2:M]*k[2:M] + (-A*ψ₀)*b[2:M])
+	
+	#SolNum = T \ b
+	
+	return(k .-mean(k),h .- mean(h))
 end
 
 # ╔═╡ 31ce9748-4ab9-445c-9c61-cafadfbf0902
-SolNum1P(4)
+SolNum1P(40)
 
-# ╔═╡ f5325b56-23cf-42ad-af02-9e10e73a754a
-eigen(SolNum1P(4))
+# ╔═╡ 2489cda0-198a-492a-b551-019089735364
+plot(plot(0:2*π/40:2*π,SolNum1P(40)[1]),
+	plot(0:2*π/40:2*π,SolNum1P(40)[2]),
+	layout=(1,2))
 
-# ╔═╡ 1308ac4c-3bad-4bb8-a691-b7d25b01208f
-eigen(SolNum1P(4)[2:4,2:4])
+# ╔═╡ a97e657f-f36c-45ba-a5e9-84b89cf0e40e
+begin
+	ϕᵢ = 0
+	ψᵢ = 0
+	γ = -0.01
+end
 
-# ╔═╡ d972887c-2dcb-4d1f-92d5-4aa5a4c4f92f
+# ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
+function SolNum1Picard(M,maxiter)
+	#Pesos y puntos de integración numérica en [-1,1]
+	ω_r = [5/9,8/9, 5/9]
+	ζ_r = [-sqrt(15)/5,0,+sqrt(15)/5]
 
+	#Matrices resultantes de FEM
+	
+	D = zeros(M,M)
+	E = zeros(M,M)
+	b = zeros(M,1)
 
-# ╔═╡ 7d9250ae-b88c-4f9d-a972-11e309fcc915
+	k = ϕᵢ * ones(M+1,1)
+	h = ψᵢ * ones(M+1,1)
+	
+	for iter in 1:maxiter
+	
+	for i=1:M #Iteración por cada elemento
+		
+		#Definición del elemento
+		x0=2*π*(i-1)/M
+		x1=2*π*i/M
+		Δ=x1-x0
+		f = [exp(γ* ((h[i+1]-h[i])*t/4 + h[i]) ) for t in 1:3]
+		#Pesos y puntos de cuadratura locales
+		ω = 0.5*(x1-x0)*ω_r
+		ζ = [x0,x0,x0]+ 0.5*([1,1,1]+ζ_r)*(Δ) 
 
+		#Funciones base locales
+		ϕ1  = ([x1,x1,x1]-ζ)/Δ 
+		ϕ2  = (ζ-[x0,x0,x0])/Δ 
+		∂ϕ1 = [-1,-1,-1]/Δ
+		∂ϕ2 = [1,1,1]/Δ
+
+		#Grados de libertad locales
+		dof = [i,i+1] 
+		if i == M
+			dof = [M,1]
+		end
+		#Submatrices locales
+		d11  = sum(ω.*∂ϕ1.*∂ϕ1)
+	    d12  = sum(ω.*∂ϕ1.*∂ϕ2)
+	    d21  = sum(ω.*∂ϕ2.*∂ϕ1)
+	    d22  = sum(ω.*∂ϕ2.*∂ϕ2)
+		Dloc = [d11 d12; d21 d22]
+
+		e11  = sum(ω.*f.*ϕ1.*ϕ1)
+	    e12  = sum(ω.*f.*ϕ1.*ϕ2)
+	    e21  = sum(ω.*f.*ϕ2.*ϕ1)
+	    e22  = sum(ω.*f.*ϕ2.*ϕ2)
+		Eloc = [e11 e12; e21 e22]
+		
+	    b1   = sum(ω.*f.*ϕ1)
+	    b2   = sum(ω.*f.*ϕ2)
+		bloc = [b1,b2]
+
+		#Ensamblamiento de matrices globales   
+		D[dof,dof]  = D[dof,dof] + Dloc
+		E[dof,dof]  = E[dof,dof] + Eloc
+		b[dof]      = b[dof] + bloc	 
+	end
+	k[2:M] = D[2:M,2:M] \ ((A/δ)*b[2:M])
+	h[2:M] = D[2:M,2:M] \ (-A*E[2:M,2:M]*k[2:M] + (-A*ψ₀)*b[2:M])
+
+	k = k .-mean(k)
+	h = h .-mean(h)
+	end
+	return(k,h)
+end
+
+# ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
+plot(plot(0:2*π/10:2*π,SolNum1Picard(10,70)[1]),
+	plot(0:2*π/10:2*π,SolNum1Picard(10,70)[2]),
+	layout=(1,2))
 
 # ╔═╡ 5f50b8cd-1931-4b4a-856c-6b9395694595
 md"""
 ## Newton's method
+"""
+
+# ╔═╡ 069fc311-1140-42ec-8982-d9a2c68446b9
+md"""
+Given a initial aproximation $\psi_i$ y $\phi_i$, we build the sequence:
+
+$\psi_{n+1} = \psi_{n}+h$
+
+$\phi_{n+1} = \phi_{n}+h$
+
+for $n=0,1,2,\ldots$ until convergence, where $h$ and $k$ represent perturbations satisfying the next equations for all test functions $p$ and $q$
 """
 
 # ╔═╡ 9f41b617-1546-4569-a42b-806d37e9ba41
@@ -189,6 +305,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 Plots = "~1.40.9"
@@ -201,7 +318,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "b207cf39908fc1f7a95857054fddac0ea5de687b"
+project_hash = "8c4f265d1b9ce57692c6ad216717bc0643cdc834"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1330,18 +1447,23 @@ version = "1.4.1+1"
 # ╠═1feb3ab7-a77f-454a-aaa7-9fdb087e680b
 # ╟─6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
 # ╟─6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+# ╠═89763b3b-69c4-40da-b060-7eeb0e4b86f7
 # ╟─b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
+# ╠═733e9c4f-d122-46a9-a908-14e2fc4867ea
 # ╟─22099ce3-7655-4652-8e6c-540de4c61548
 # ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
+# ╟─05c8fb62-ba89-46c5-b182-8999ea519d06
 # ╟─89414081-c3ad-42b8-a409-166eac20764f
+# ╟─2269f1c8-26e3-4426-8037-756566fb9d63
 # ╠═097d2cec-1f08-4f45-9112-04a1687230ed
 # ╠═b9f1f8a7-a533-421d-856b-5a4ff40d3e85
 # ╠═31ce9748-4ab9-445c-9c61-cafadfbf0902
-# ╠═f5325b56-23cf-42ad-af02-9e10e73a754a
-# ╠═1308ac4c-3bad-4bb8-a691-b7d25b01208f
-# ╠═d972887c-2dcb-4d1f-92d5-4aa5a4c4f92f
-# ╠═7d9250ae-b88c-4f9d-a972-11e309fcc915
+# ╟─2489cda0-198a-492a-b551-019089735364
+# ╠═a97e657f-f36c-45ba-a5e9-84b89cf0e40e
+# ╠═53772983-f2dc-4b93-99f6-eada9726c2c5
+# ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
 # ╟─5f50b8cd-1931-4b4a-856c-6b9395694595
+# ╟─069fc311-1140-42ec-8982-d9a2c68446b9
 # ╟─9f41b617-1546-4569-a42b-806d37e9ba41
 # ╠═a2d59f56-71ca-433b-8c30-0e9aff3f44ba
 # ╟─00000000-0000-0000-0000-000000000001
