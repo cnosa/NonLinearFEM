@@ -119,16 +119,12 @@ begin
 	ψ₀ = 0.1
 	A = 0.5
 	δ = 1
-end
-
-# ╔═╡ a97e657f-f36c-45ba-a5e9-84b89cf0e40e
-begin
-	ϕᵢ = 1
-	ψᵢ = 1
 	γ = 4
 end
 
 # ╔═╡ b9f1f8a7-a533-421d-856b-5a4ff40d3e85
+# ╠═╡ disabled = true
+#=╠═╡
 function SolNum1P(M)
 	#Pesos y puntos de integración numérica en [-1,1]
 	ω_r = [5/9,8/9, 5/9]
@@ -139,11 +135,11 @@ function SolNum1P(M)
 	D = zeros(M,M)
 	E = zeros(M,M)
 	b = zeros(M,1)
-
+	c=zeros(M,1)
 	
 	
 	for i=1:M #Iteración por cada elemento
-		f = (exp(γ*0.1))*[1,1,1]
+		
 		#Definición del elemento
 		x0=2*π*(i-1)/M
 		x1=2*π*i/M
@@ -164,6 +160,8 @@ function SolNum1P(M)
 		if i == M
 			dof = [M,1]
 		end
+		f=-A*(ζ .+ψ₀).*exp.(γ*ζ) .+ζ
+		g=(A/δ).*exp.(γ*ζ)
 		#Submatrices locales
 		d11  = sum(ω.*∂ϕ1.*∂ϕ1 + ω.*ϕ1.*ϕ1)
 	    d12  = sum(ω.*∂ϕ1.*∂ϕ2+ ω.*ϕ1.*ϕ2)
@@ -171,41 +169,50 @@ function SolNum1P(M)
 	    d22  = sum(ω.*∂ϕ2.*∂ϕ2+ ω.*ϕ2.*ϕ2)
 		Dloc = [d11 d12; d21 d22]
 
-		e11  = sum(ω.*f.*ϕ1.*ϕ1)
-	    e12  = sum(ω.*f.*ϕ1.*ϕ2)
-	    e21  = sum(ω.*f.*ϕ2.*ϕ1)
-	    e22  = sum(ω.*f.*ϕ2.*ϕ2)
+		e11  = sum(ω.*ϕ1.*ϕ1)
+	    e12  = sum(ω.*ϕ1.*ϕ2)
+	    e21  = sum(ω.*ϕ2.*ϕ1)
+	    e22  = sum(ω.*ϕ2.*ϕ2)
 		Eloc = [e11 e12; e21 e22]
 		
 	    b1   = sum(ω.*f.*ϕ1)
 	    b2   = sum(ω.*f.*ϕ2)
+	    c1   = sum(ω.*g.*ϕ1)
+	    c2   = sum(ω.*g.*ϕ2)
 		bloc = [b1,b2]
+		cloc = [c1,c2]
 
 		#Ensamblamiento de matrices globales   
 		D[dof,dof]  = D[dof,dof] + Dloc
 		E[dof,dof]  = E[dof,dof] + Eloc
-		b[dof]      = b[dof] + bloc	 
+		b[dof]      = b[dof] + bloc 
+		c[dof]      = c[dof] + cloc 
 	end
 
 	T = [D -E; zeros(M,M) D]
 	k = zeros(M+1,1)
 	h = zeros(M+1,1)
 
-	k[2:M] = D[2:M,2:M] \ ((A/δ)*b[2:M])
-	h[2:M] = D[2:M,2:M] \ (-A*E[2:M,2:M]*k[2:M] + (-A*ψ₀)*b[2:M])
+	k[1:M] = D[1:M,1:M] \ b[1:M]
+	h[1:M] = D[1:M,1:M] \ c[1:M]
 	
 	#SolNum = T \ b
 	
-	return(k .-mean(k),h .- mean(h))
+	return k,h 
 end
+  ╠═╡ =#
 
 # ╔═╡ 31ce9748-4ab9-445c-9c61-cafadfbf0902
+#=╠═╡
 SolNum1P(20)
+  ╠═╡ =#
 
 # ╔═╡ 2489cda0-198a-492a-b551-019089735364
-plot(plot(0:2*π/40:2*π,SolNum1P(40)[1]),
-	plot(0:2*π/40:2*π,SolNum1P(40)[2]),
+#=╠═╡
+plot(plot(0:2*π/10:2*π,SolNum1P(10)[1]),
+	plot(0:2*π/10:2*π,SolNum1P(10)[2]),
 	layout=(1,2))
+  ╠═╡ =#
 
 # ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
 function SolNum1Picard(M,maxiter)
@@ -269,14 +276,17 @@ function SolNum1Picard(M,maxiter)
 		Eloc = [e11 e12; e21 e22]
 		
 	    b1   = sum(ω.*f.*ϕ1)
-	    b2   = sum(ω.*g.*ϕ2)
+	    b2   = sum(ω.*f.*ϕ2)
 		bloc = [b1,b2]
+	    c1   = sum(ω.*f.*ϕ1)
+	    c2   = sum(ω.*f.*ϕ2)
+		cloc = [b1,b2]
 
 		#Ensamblamiento de matrices globales   
 		D[dof,dof]  = D[dof,dof] + Dloc
 		E[dof,dof]  = E[dof,dof] + Eloc
 		b[dof]      = b[dof] + bloc	 
-		c[dof]      = c[dof] + bloc	 
+		c[dof]      = c[dof] + cloc	 
 	end
 	k[1:M] = D[1:M,1:M] \ (c[1:M])
 	h[1:M] = D[1:M,1:M] \ (b[1:M])
@@ -1453,7 +1463,6 @@ version = "1.4.1+1"
 # ╠═b9f1f8a7-a533-421d-856b-5a4ff40d3e85
 # ╠═31ce9748-4ab9-445c-9c61-cafadfbf0902
 # ╠═2489cda0-198a-492a-b551-019089735364
-# ╠═a97e657f-f36c-45ba-a5e9-84b89cf0e40e
 # ╠═53772983-f2dc-4b93-99f6-eada9726c2c5
 # ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
 # ╟─00000000-0000-0000-0000-000000000001
