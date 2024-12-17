@@ -44,15 +44,27 @@ $(S)\begin{cases}
 \end{cases}$
 """
 
+# ╔═╡ e9e31182-647b-437d-ac04-eab584a10c5d
+md"""
+**Strong formulation for Picard**
+
+$(S)\begin{cases}
+-\phi''(t) +\phi(t) = -A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}+phi(t),\\
+-\psi''(t)+\psi(t) = \frac{A}{\delta}\ e^{\gamma \phi(t)}+\psi,\\
+\phi(0) = \phi(2\pi),  \phi'(0)=\phi'(2\pi),\\
+\psi(0) = \psi(2\pi),  \psi'(0)=\psi'(2\pi).\\
+\end{cases}$
+"""
+
 # ╔═╡ 89763b3b-69c4-40da-b060-7eeb0e4b86f7
 
 
 # ╔═╡ b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
 md"""
-**Weak formulation**
+**Weak formulation for Picard**
 
 $(W)\begin{cases}
-\int_{0}^{2\pi}\phi'(t)p'(t)dt = \int_{0}^{2\pi} - A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}p(t)dt\\
+\int_{0}^{2\pi}\phi'p'+\phi p = -A\int_{0}^{2\pi} (\psi+\psi_0)\ e^{\gamma \phi}p+phi*p\\
 \int_{0}^{2\pi}\psi'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi(t)}q(t)dt\\
 \end{cases}$
 """
@@ -1423,9 +1435,10 @@ version = "1.4.1+1"
 # ╟─d8f6f94a-a8d3-4f22-a0eb-e4a144f47e37
 # ╠═1feb3ab7-a77f-454a-aaa7-9fdb087e680b
 # ╟─6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
-# ╟─6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+# ╠═6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+# ╟─e9e31182-647b-437d-ac04-eab584a10c5d
 # ╠═89763b3b-69c4-40da-b060-7eeb0e4b86f7
-# ╟─b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
+# ╠═b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
 # ╠═733e9c4f-d122-46a9-a908-14e2fc4867ea
 # ╟─22099ce3-7655-4652-8e6c-540de4c61548
 # ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
