@@ -116,103 +116,11 @@ where
 
 # ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
 begin
-	ψ₀ = 0.1
-	A = 0.5
-	δ = 1
-	γ = 4
+	ψ₀ = 0
+	A = .1
+	δ = .01
+	γ = 0.1
 end
-
-# ╔═╡ b9f1f8a7-a533-421d-856b-5a4ff40d3e85
-# ╠═╡ disabled = true
-#=╠═╡
-function SolNum1P(M)
-	#Pesos y puntos de integración numérica en [-1,1]
-	ω_r = [5/9,8/9, 5/9]
-	ζ_r = [-sqrt(15)/5,0,+sqrt(15)/5]
-
-	#Matrices resultantes de FEM
-	
-	D = zeros(M,M)
-	E = zeros(M,M)
-	b = zeros(M,1)
-	c=zeros(M,1)
-	
-	
-	for i=1:M #Iteración por cada elemento
-		
-		#Definición del elemento
-		x0=2*π*(i-1)/M
-		x1=2*π*i/M
-		Δ=x1-x0
-
-		#Pesos y puntos de cuadratura locales
-		ω = 0.5*(x1-x0)*ω_r
-		ζ = [x0,x0,x0]+ 0.5*([1,1,1]+ζ_r)*(Δ) 
-
-		#Funciones base locales
-		ϕ1  = ([x1,x1,x1]-ζ)/Δ 
-		ϕ2  = (ζ-[x0,x0,x0])/Δ 
-		∂ϕ1 = [-1,-1,-1]/Δ
-		∂ϕ2 = [1,1,1]/Δ
-
-		#Grados de libertad locales
-		dof = [i,i+1] 
-		if i == M
-			dof = [M,1]
-		end
-		f=-A*(ζ .+ψ₀).*exp.(γ*ζ) .+ζ
-		g=(A/δ).*exp.(γ*ζ)
-		#Submatrices locales
-		d11  = sum(ω.*∂ϕ1.*∂ϕ1 + ω.*ϕ1.*ϕ1)
-	    d12  = sum(ω.*∂ϕ1.*∂ϕ2+ ω.*ϕ1.*ϕ2)
-	    d21  = sum(ω.*∂ϕ2.*∂ϕ1+ ω.*ϕ2.*ϕ1)
-	    d22  = sum(ω.*∂ϕ2.*∂ϕ2+ ω.*ϕ2.*ϕ2)
-		Dloc = [d11 d12; d21 d22]
-
-		e11  = sum(ω.*ϕ1.*ϕ1)
-	    e12  = sum(ω.*ϕ1.*ϕ2)
-	    e21  = sum(ω.*ϕ2.*ϕ1)
-	    e22  = sum(ω.*ϕ2.*ϕ2)
-		Eloc = [e11 e12; e21 e22]
-		
-	    b1   = sum(ω.*f.*ϕ1)
-	    b2   = sum(ω.*f.*ϕ2)
-	    c1   = sum(ω.*g.*ϕ1)
-	    c2   = sum(ω.*g.*ϕ2)
-		bloc = [b1,b2]
-		cloc = [c1,c2]
-
-		#Ensamblamiento de matrices globales   
-		D[dof,dof]  = D[dof,dof] + Dloc
-		E[dof,dof]  = E[dof,dof] + Eloc
-		b[dof]      = b[dof] + bloc 
-		c[dof]      = c[dof] + cloc 
-	end
-
-	T = [D -E; zeros(M,M) D]
-	k = zeros(M+1,1)
-	h = zeros(M+1,1)
-
-	k[1:M] = D[1:M,1:M] \ b[1:M]
-	h[1:M] = D[1:M,1:M] \ c[1:M]
-	
-	#SolNum = T \ b
-	
-	return k,h 
-end
-  ╠═╡ =#
-
-# ╔═╡ 31ce9748-4ab9-445c-9c61-cafadfbf0902
-#=╠═╡
-SolNum1P(20)
-  ╠═╡ =#
-
-# ╔═╡ 2489cda0-198a-492a-b551-019089735364
-#=╠═╡
-plot(plot(0:2*π/10:2*π,SolNum1P(10)[1]),
-	plot(0:2*π/10:2*π,SolNum1P(10)[2]),
-	layout=(1,2))
-  ╠═╡ =#
 
 # ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
 function SolNum1Picard(M,maxiter)
@@ -269,22 +177,22 @@ function SolNum1Picard(M,maxiter)
 	    d22  = sum(ω.*∂ϕ2.*∂ϕ2 + ω.*ϕ2.*ϕ2)
 		Dloc = [d11 d12; d21 d22]
 
-		e11  = sum(ω.*f.*ϕ1.*ϕ1)
-	    e12  = sum(ω.*f.*ϕ1.*ϕ2)
-	    e21  = sum(ω.*f.*ϕ2.*ϕ1)
-	    e22  = sum(ω.*f.*ϕ2.*ϕ2)
-		Eloc = [e11 e12; e21 e22]
+#		e11  = sum(ω.*f.*ϕ1.*ϕ1)
+#	    e12  = sum(ω.*f.*ϕ1.*ϕ2)
+#	    e21  = sum(ω.*f.*ϕ2.*ϕ1)
+#	    e22  = sum(ω.*f.*ϕ2.*ϕ2)
+#		Eloc = [e11 e12; e21 e22]
 		
 	    b1   = sum(ω.*f.*ϕ1)
 	    b2   = sum(ω.*f.*ϕ2)
 		bloc = [b1,b2]
-	    c1   = sum(ω.*f.*ϕ1)
-	    c2   = sum(ω.*f.*ϕ2)
-		cloc = [b1,b2]
+	    c1   = sum(ω.*g.*ϕ1)
+	    c2   = sum(ω.*g.*ϕ2)
+		cloc = [c1,c2]
 
 		#Ensamblamiento de matrices globales   
 		D[dof,dof]  = D[dof,dof] + Dloc
-		E[dof,dof]  = E[dof,dof] + Eloc
+#		E[dof,dof]  = E[dof,dof] + Eloc
 		b[dof]      = b[dof] + bloc	 
 		c[dof]      = c[dof] + cloc	 
 	end
@@ -297,12 +205,12 @@ end
 
 # ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
 begin
-	iter = 10
-	elements = 200
+	iter = 1000
+	elements = 100
 	list_of_el=0:2*π/elements:2*π;
 	
-	plot(plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[1][1:(elements-1)],label="phi"),
-		plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[2][1:(elements-1)],label="psi"),
+	plot(plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[1][1:(elements-1)],label="ϕ", lw=4),
+		plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[2][1:(elements-1)],label="ψ", lw=4),
 		layout=(1,2))
 end
 
@@ -1459,11 +1367,8 @@ version = "1.4.1+1"
 # ╟─05c8fb62-ba89-46c5-b182-8999ea519d06
 # ╠═89414081-c3ad-42b8-a409-166eac20764f
 # ╟─2269f1c8-26e3-4426-8037-756566fb9d63
-# ╠═097d2cec-1f08-4f45-9112-04a1687230ed
-# ╠═b9f1f8a7-a533-421d-856b-5a4ff40d3e85
-# ╠═31ce9748-4ab9-445c-9c61-cafadfbf0902
-# ╠═2489cda0-198a-492a-b551-019089735364
 # ╠═53772983-f2dc-4b93-99f6-eada9726c2c5
+# ╠═097d2cec-1f08-4f45-9112-04a1687230ed
 # ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
