@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ a9208590-a822-11ef-04a1-735c2a12a98a
 using PlutoUI
 
@@ -119,7 +129,7 @@ begin
 	ψ₀ = 0
 	A = .1
 	δ = .01
-	γ = 0.1
+	γ = 1
 end
 
 # ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
@@ -138,10 +148,14 @@ function SolNum1Picard(M,maxiter)
 	# k = ϕᵢ * ones(M+1,1)
 	# h = ψᵢ * ones(M+1,1)
 
-	k = [0.01*sin(l) for l in 0:2*π/M:2*π]
-	h = [0.01*cos(l) for l in 0:2*π/M:2*π]
+	h=zeros(maxiter,M)
+	k=zeros(maxiter,M)
+	nodes=0:2*π/M:2*π;
+	k[1,:] = 0.01*sin.(nodes[1:M])
+	h[1,:] = 0.01*cos.(nodes[1:M])
+
 	
-	for iter in 1:maxiter
+	for iter in 2:maxiter
 	
 	for i=1:M #Iteración por cada elemento
 		
@@ -166,8 +180,8 @@ function SolNum1Picard(M,maxiter)
 			dof = [M,1]
 		end
 
-		hζ= ϕ1*h[dof[1]]+ϕ2*h[dof[2]]
-		kζ= ϕ1*k[dof[1]]+ϕ2*k[dof[2]]
+		hζ= ϕ1*h[iter-1,dof[1]]+ϕ2*h[iter-1,dof[2]]
+		kζ= ϕ1*k[iter-1,dof[1]]+ϕ2*k[iter-1,dof[2]]
 		f=-A*(kζ .+ψ₀).*exp.(γ*hζ) .+hζ
 		g=(A/δ)*exp.(γ*hζ) .+kζ
 		#Submatrices locales
@@ -196,23 +210,31 @@ function SolNum1Picard(M,maxiter)
 		b[dof]      = b[dof] + bloc	 
 		c[dof]      = c[dof] + cloc	 
 	end
-	k[1:M] = D[1:M,1:M] \ (c[1:M])
-	h[1:M] = D[1:M,1:M] \ (b[1:M])
+	k[iter,1:M] = D[1:M,1:M] \ (c[1:M])
+	h[iter,1:M] = D[1:M,1:M] \ (b[1:M])
+
 
 	end
-	return(k,h)
+	return(h,k)
 end
 
 # ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
 begin
-	iter = 1000
-	elements = 100
-	list_of_el=0:2*π/elements:2*π;
-	
-	plot(plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[1][1:(elements-1)],label="ϕ", lw=4),
-		plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[2][1:(elements-1)],label="ψ", lw=4),
-		layout=(1,2))
+	iter = 100
+	M = 100
+	nodes=0:2*π/M:2*π;
+	nodesp=nodes[1:M]
+	hsol,ksol=SolNum1Picard(M,iter)
+
 end
+
+# ╔═╡ 865cb63f-3d65-4226-ac9c-6204e64829e4
+	@bind iterp Slider(1:iter, default=iter)
+
+# ╔═╡ a7fd9bcc-33d0-4f3b-8022-6644eb1127a2
+	plot(plot(nodesp,hsol[iterp,:],label="ϕ", lw=4),
+		plot(nodesp,ksol[iterp,:],label="ψ", lw=4),
+		layout=(1,2))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1370,5 +1392,7 @@ version = "1.4.1+1"
 # ╠═53772983-f2dc-4b93-99f6-eada9726c2c5
 # ╠═097d2cec-1f08-4f45-9112-04a1687230ed
 # ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
+# ╠═865cb63f-3d65-4226-ac9c-6204e64829e4
+# ╠═a7fd9bcc-33d0-4f3b-8022-6644eb1127a2
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
