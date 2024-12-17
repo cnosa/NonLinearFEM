@@ -64,9 +64,9 @@ md"""
 **Weak formulation for Picard**
 
 $(W)\begin{cases}
-\int_{0}^{2\pi}\phi'p'+\phi p = -A\int_{0}^{2\pi} (\psi+\psi_0)\ e^{\gamma \phi}p+phi*p\\
-\int_{0}^{2\pi}\psi'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi(t)}q(t)dt\\
-\end{cases}$
+\displaystyle\int_{0}^{2\pi}\phi'p'+\phi p = -A\int_{0}^{2\pi} (\psi+\psi_0)\ e^{\gamma \phi}p+\phi p\\
+\displaystyle\int_{0}^{2\pi}\psi' q' +\psi q = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi}q 
++\psi q\end{cases}$
 """
 
 # ╔═╡ 733e9c4f-d122-46a9-a908-14e2fc4867ea
@@ -92,9 +92,9 @@ md"""
 **Picard's formulation**
 
 $(P)\begin{cases}
-\int_{0}^{2\pi}\phi_{n+1}'(t)p'(t)dt = \int_{0}^{2\pi} - A(\psi_{n+1}(t)+\psi_0)\ e^{\gamma \phi_{n}(t)}p(t)dt\\
-\int_{0}^{2\pi}\psi_{n+1}'(t)q'(t)dt = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi_{n}(t)}q(t)dt\\
-\end{cases}$
+\displaystyle\int_{0}^{2\pi}\phi_{n+1}'p'+\phi_{n+1} p = -A\int_{0}^{2\pi} (\psi_{n}+\psi_0)\ e^{\gamma \phi_{n}}p+\phi p\\
+\displaystyle\int_{0}^{2\pi}\psi{n+1}' q' +\psi{n+1} q = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi_{n}}q 
++\psi_{n} q\end{cases}$
 """
 
 # ╔═╡ 2269f1c8-26e3-4426-8037-756566fb9d63
@@ -125,7 +125,7 @@ end
 begin
 	ϕᵢ = 1
 	ψᵢ = 1
-	γ = 0.0001
+	γ = 4
 end
 
 # ╔═╡ b9f1f8a7-a533-421d-856b-5a4ff40d3e85
@@ -143,7 +143,7 @@ function SolNum1P(M)
 	
 	
 	for i=1:M #Iteración por cada elemento
-		f = (exp(γ*0.1)+0.1)*[1,1,1]
+		f = (exp(γ*0.1))*[1,1,1]
 		#Definición del elemento
 		x0=2*π*(i-1)/M
 		x1=2*π*i/M
@@ -218,6 +218,7 @@ function SolNum1Picard(M,maxiter)
 	D = zeros(M,M)
 	E = zeros(M,M)
 	b = zeros(M,1)
+	c = zeros(M,1)
 
 	# k = ϕᵢ * ones(M+1,1)
 	# h = ψᵢ * ones(M+1,1)
@@ -233,11 +234,11 @@ function SolNum1Picard(M,maxiter)
 		x0=2*π*(i-1)/M
 		x1=2*π*i/M
 		Δ=x1-x0
-	f = [exp(γ* ((h[i+1]-h[i])*t/4 + h[i]) )+(h[i+1]-h[i])*t/4 + h[i] for t in 1:3]
+#	f = [exp(γ* ((h[i+1]-h[i])*t/4 + h[i]) )+(h[i+1]-h[i])*t/4 + h[i] for t in 1:3]
 		#Pesos y puntos de cuadratura locales
 		ω = 0.5*(x1-x0)*ω_r
 		ζ = [x0,x0,x0]+ 0.5*([1,1,1]+ζ_r)*(Δ) 
-
+		
 		#Funciones base locales
 		ϕ1  = ([x1,x1,x1]-ζ)/Δ 
 		ϕ2  = (ζ-[x0,x0,x0])/Δ 
@@ -249,6 +250,11 @@ function SolNum1Picard(M,maxiter)
 		if i == M
 			dof = [M,1]
 		end
+
+		hζ= ϕ1*h[dof[1]]+ϕ2*h[dof[2]]
+		kζ= ϕ1*k[dof[1]]+ϕ2*k[dof[2]]
+		f=-A*(kζ .+ψ₀).*exp.(γ*hζ) .+hζ
+		g=(A/δ)*exp.(γ*hζ) .+kζ
 		#Submatrices locales
 		d11  = sum(ω.*∂ϕ1.*∂ϕ1 + ω.*ϕ1.*ϕ1)
 	    d12  = sum(ω.*∂ϕ1.*∂ϕ2 + ω.*ϕ1.*ϕ2)
@@ -263,16 +269,17 @@ function SolNum1Picard(M,maxiter)
 		Eloc = [e11 e12; e21 e22]
 		
 	    b1   = sum(ω.*f.*ϕ1)
-	    b2   = sum(ω.*f.*ϕ2)
+	    b2   = sum(ω.*g.*ϕ2)
 		bloc = [b1,b2]
 
 		#Ensamblamiento de matrices globales   
 		D[dof,dof]  = D[dof,dof] + Dloc
 		E[dof,dof]  = E[dof,dof] + Eloc
 		b[dof]      = b[dof] + bloc	 
+		c[dof]      = c[dof] + bloc	 
 	end
-	k[1:M] = D[1:M,1:M] \ ((A/δ)*b[1:M])
-	h[1:M] = D[1:M,1:M] \ (-A*E[1:M,1:M]*k[1:M] + (-A*ψ₀)*b[1:M])
+	k[1:M] = D[1:M,1:M] \ (c[1:M])
+	h[1:M] = D[1:M,1:M] \ (b[1:M])
 
 	end
 	return(k,h)
@@ -280,7 +287,7 @@ end
 
 # ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
 begin
-	iter = 3
+	iter = 10
 	elements = 200
 	list_of_el=0:2*π/elements:2*π;
 	
@@ -288,9 +295,6 @@ begin
 		plot(list_of_el[1:(elements-1)],SolNum1Picard(elements,iter)[2][1:(elements-1)],label="psi"),
 		layout=(1,2))
 end
-
-# ╔═╡ a2d59f56-71ca-433b-8c30-0e9aff3f44ba
-M
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1443,7 +1447,7 @@ version = "1.4.1+1"
 # ╟─22099ce3-7655-4652-8e6c-540de4c61548
 # ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
 # ╟─05c8fb62-ba89-46c5-b182-8999ea519d06
-# ╟─89414081-c3ad-42b8-a409-166eac20764f
+# ╠═89414081-c3ad-42b8-a409-166eac20764f
 # ╟─2269f1c8-26e3-4426-8037-756566fb9d63
 # ╠═097d2cec-1f08-4f45-9112-04a1687230ed
 # ╠═b9f1f8a7-a533-421d-856b-5a4ff40d3e85
@@ -1452,6 +1456,5 @@ version = "1.4.1+1"
 # ╠═a97e657f-f36c-45ba-a5e9-84b89cf0e40e
 # ╠═53772983-f2dc-4b93-99f6-eada9726c2c5
 # ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
-# ╠═a2d59f56-71ca-433b-8c30-0e9aff3f44ba
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
