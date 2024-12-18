@@ -59,7 +59,7 @@ md"""
 **Strong formulation for Picard**
 
 $(S)\begin{cases}
--\phi''(t) +\phi(t) = -A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}+phi(t),\\
+-\phi''(t) +\phi(t) = -A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}+\phi(t),\\
 -\psi''(t)+\psi(t) = \frac{A}{\delta}\ e^{\gamma \phi(t)}+\psi,\\
 \phi(0) = \phi(2\pi),  \phi'(0)=\phi'(2\pi),\\
 \psi(0) = \psi(2\pi),  \psi'(0)=\psi'(2\pi).\\
@@ -151,8 +151,8 @@ function SolNum1Picard(M,maxiter)
 	h=zeros(maxiter,M)
 	k=zeros(maxiter,M)
 	nodes=0:2*π/M:2*π;
-	k[1,:] = 0.01*sin.(nodes[1:M])
-	h[1,:] = 0.01*cos.(nodes[1:M])
+	k[1,:] = sin.(nodes[1:M])
+	h[1,:] = cos.(nodes[1:M])
 
 	
 	for iter in 2:maxiter
@@ -182,7 +182,7 @@ function SolNum1Picard(M,maxiter)
 
 		hζ= ϕ1*h[iter-1,dof[1]]+ϕ2*h[iter-1,dof[2]]
 		kζ= ϕ1*k[iter-1,dof[1]]+ϕ2*k[iter-1,dof[2]]
-		f=-A*(kζ .+ψ₀).*exp.(γ*hζ) .+hζ
+		f=-A*(kζ .+ψ₀).*exp.(γ*hζ) +hζ
 		g=(A/δ)*exp.(γ*hζ) .+kζ
 		#Submatrices locales
 		d11  = sum(ω.*∂ϕ1.*∂ϕ1 + ω.*ϕ1.*ϕ1)
@@ -220,7 +220,7 @@ end
 
 # ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
 begin
-	iter = 100
+	iter = 2000
 	M = 100
 	nodes=0:2*π/M:2*π
 	nodesp=nodes[1:M]
@@ -235,6 +235,17 @@ end
 	plot(plot(nodesp,hsol[iterp,:],label="ϕ", lw=4, ylims=(-2, 2)),
 		plot(nodesp,ksol[iterp,:],label="ψ", lw=4,ylims=(-2, 2)),
 		layout=(1,2))
+
+# ╔═╡ 2c1d3476-ab68-4a17-b783-9b5c1f200558
+anim = @animate  for i in 1:iter
+	plot(plot(nodesp,hsol[i,:],label="ϕ", lw=4, ylims=(-1.5, -0.5)),
+		plot(nodesp,ksol[i,:],label="ψ", lw=4,ylims=(0.5, 1)),
+		layout=(1,2), title="Picard(Iteration: $i / $iter)",)
+end
+
+# ╔═╡ d6e4b616-157b-4694-8385-55127fb482be
+# Save the animation as a GIF
+gif(anim, "Picard.gif", fps=15)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1379,7 +1390,7 @@ version = "1.4.1+1"
 # ╟─d8f6f94a-a8d3-4f22-a0eb-e4a144f47e37
 # ╠═1feb3ab7-a77f-454a-aaa7-9fdb087e680b
 # ╟─6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
-# ╠═6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
+# ╟─6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
 # ╟─e9e31182-647b-437d-ac04-eab584a10c5d
 # ╠═89763b3b-69c4-40da-b060-7eeb0e4b86f7
 # ╠═b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
@@ -1394,5 +1405,7 @@ version = "1.4.1+1"
 # ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
 # ╠═865cb63f-3d65-4226-ac9c-6204e64829e4
 # ╠═a7fd9bcc-33d0-4f3b-8022-6644eb1127a2
+# ╠═2c1d3476-ab68-4a17-b783-9b5c1f200558
+# ╠═d6e4b616-157b-4694-8385-55127fb482be
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
