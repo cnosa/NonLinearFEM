@@ -126,10 +126,10 @@ where
 
 # ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
 begin
-	ψ₀ = 0
+	ψ₀ = 1
 	A = .1
-	δ = .01
-	γ = 1
+	δ = 1
+	γ = 0.001
 end
 
 # ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
@@ -222,7 +222,7 @@ end
 begin
 	iter = 100
 	M = 100
-	nodes=0:2*π/M:2*π;
+	nodes=0:2*π/M:2*π
 	nodesp=nodes[1:M]
 	hsol,ksol=SolNum1Picard(M,iter)
 
@@ -232,8 +232,8 @@ end
 	@bind iterp Slider(1:iter, default=iter)
 
 # ╔═╡ a7fd9bcc-33d0-4f3b-8022-6644eb1127a2
-	plot(plot(nodesp,hsol[iterp,:],label="ϕ", lw=4),
-		plot(nodesp,ksol[iterp,:],label="ψ", lw=4),
+	plot(plot(nodesp,hsol[iterp,:],label="ϕ", lw=4, ylims=(-2, 2)),
+		plot(nodesp,ksol[iterp,:],label="ψ", lw=4,ylims=(-2, 2)),
 		layout=(1,2))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
