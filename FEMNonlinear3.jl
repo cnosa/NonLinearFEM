@@ -124,16 +124,8 @@ $D k_{n+1} = c_{n}$
 where
 """
 
-# ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
-begin
-	ψ₀ = 1
-	A = .1
-	δ = 1
-	γ = 1
-end
-
 # ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
-function SolNum1Picard(M,maxiter)
+function SolNum1Picard(M,maxiter,ψ₀,A,δ,γ)
 	#Pesos y puntos de integración numérica en [-1,1]
 	ω_r = [5/9,8/9, 5/9]
 	ζ_r = [-sqrt(15)/5,0,+sqrt(15)/5]
@@ -215,25 +207,42 @@ function SolNum1Picard(M,maxiter)
 
 
 	end
-	return(h,k)
+	return(h[maxiter,:],k[maxiter,:])
+end
+
+# ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
+begin
+	ψ₀ = 1
+	A = 1
+	δ = 1000
+	γmin=0
+	γmax=5
 end
 
 # ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
 begin
-	iter = 2000
+	iter = 100
 	M = 100
 	nodes=0:2*π/M:2*π
 	nodesp=nodes[1:M]
-	hsol,ksol=SolNum1Picard(M,iter)
 
+	γrange=γmin:.1:γmax;
+	solhγ=zeros(length(γrange),M)
+	solkγ=zeros(length(γrange),M)
+	for i=1:length(γrange)
+	hsol,ksol=SolNum1Picard(M,iter,ψ₀,A,δ,γrange[i] )
+	solhγ[i,:]=hsol
+	solkγ[i,:]=ksol
+	end
+	
 end
 
 # ╔═╡ 865cb63f-3d65-4226-ac9c-6204e64829e4
-	@bind iterp Slider(1:iter, default=iter)
+	@bind iγ Slider(1:length(γrange), default=1)
 
 # ╔═╡ a7fd9bcc-33d0-4f3b-8022-6644eb1127a2
-	plot(plot(nodesp,hsol[iterp,:],label="ϕ", lw=4, ylims=(-2, 2)),
-		plot(nodesp,ksol[iterp,:],label="ψ", lw=4,ylims=(-2, 2)),
+	plot(plot(nodesp,solhγ[iγ,:],label="ϕ", lw=4, ylims=(-10, 10)),
+		plot(nodesp,solkγ[iγ,:],label="ψ", lw=4,ylims=(-10, 10)),
 		layout=(1,2))
 
 # ╔═╡ 2c1d3476-ab68-4a17-b783-9b5c1f200558
@@ -245,7 +254,7 @@ end
 
 # ╔═╡ d6e4b616-157b-4694-8385-55127fb482be
 # Save the animation as a GIF
-gif(anim, "Picard.gif", fps=15)
+gif(anim, "Picard2.gif", fps=15)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
