@@ -39,7 +39,7 @@ We are going to use the following libraries:
 
 # ╔═╡ 6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
 md"""
-# Theoretical part
+# Problem
 """
 
 # ╔═╡ 6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
@@ -56,7 +56,7 @@ $(S)\begin{cases}
 
 # ╔═╡ e9e31182-647b-437d-ac04-eab584a10c5d
 md"""
-**Strong formulation for Picard**
+**Strong formulation for Picard iteration**
 
 $(S)\begin{cases}
 -\phi''(t) +\phi(t) = -A(\psi(t)+\psi_0)\ e^{\gamma \phi(t)}+\phi(t),\\
@@ -66,21 +66,15 @@ $(S)\begin{cases}
 \end{cases}$
 """
 
-# ╔═╡ 89763b3b-69c4-40da-b060-7eeb0e4b86f7
-
-
 # ╔═╡ b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
 md"""
-**Weak formulation for Picard**
+**Weak formulation for Picard iteration**
 
 $(W)\begin{cases}
 \displaystyle\int_{0}^{2\pi}\phi'p'+\phi p = -A\int_{0}^{2\pi} (\psi+\psi_0)\ e^{\gamma \phi}p+\phi p\\
 \displaystyle\int_{0}^{2\pi}\psi' q' +\psi q = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi}q 
 +\psi q\end{cases}$
 """
-
-# ╔═╡ 733e9c4f-d122-46a9-a908-14e2fc4867ea
-
 
 # ╔═╡ 22099ce3-7655-4652-8e6c-540de4c61548
 md"""
@@ -102,14 +96,14 @@ md"""
 **Picard's formulation**
 
 $(P)\begin{cases}
-\displaystyle\int_{0}^{2\pi}\phi_{n+1}'p'+\phi_{n+1} p = -A\int_{0}^{2\pi} (\psi_{n}+\psi_0)\ e^{\gamma \phi_{n}}p+\phi p\\
+\displaystyle\int_{0}^{2\pi}\phi_{n+1}'p'+\phi_{n+1} p = -A\int_{0}^{2\pi} (\psi_{n}+\psi_0)\ e^{\gamma \phi_{n}}p+\phi_n p\\
 \displaystyle\int_{0}^{2\pi}\psi{n+1}' q' +\psi{n+1} q = \frac{A}{\delta}\int_{0}^{2\pi} e^{\gamma \phi_{n}}q 
 +\psi_{n} q\end{cases}$
 """
 
 # ╔═╡ 2269f1c8-26e3-4426-8037-756566fb9d63
 md"""
-If we represent the unknown functions as
+We use the Finite Element Methods with piecewise linear basis functions. If we represent the unknown functions as
 
 $\phi_{n+1}(t) = \sum_{j=0}^{M}h_{j}b_{j}(t)$
 
@@ -117,11 +111,19 @@ $\psi_{n+1}(t) = \sum_{j=0}^{M}k_{j}b_{j}(t)$
 
 where $M$ is a positive integer, $h_0 = h_M$ and $k_0 = k_M$, we can write the previous equations as
 
-$D h_{n+1} =b_{n}$
+$\mathcal{A} h_{n+1} =b_{n}$
 
-$D k_{n+1} = c_{n}$
+$\mathcal{A} k_{n+1} = c_{n}$
 
 where
+$\mathcal{A}[i,j]=\displaystyle \int_{0}^{2\pi} b_j'b_i'+b_j b_i$ 
+
+and 
+
+$b_n[i]=\displaystyle\int_{0}^{2\pi} (-A(\psi_{n}+\psi_0)\ e^{\gamma \phi_{n}}+\phi_n) b_i$ 
+
+$c_n[i]=\displaystyle \int_{0}^{2\pi} (\frac{A}{\delta}e^{\gamma \phi_{n}} 
++\psi_{n})b_i$
 """
 
 # ╔═╡ 53772983-f2dc-4b93-99f6-eada9726c2c5
@@ -207,52 +209,50 @@ function SolNum1Picard(M,maxiter,ψ₀,A,δ,γ)
 
 
 	end
-	return(h[maxiter,:],k[maxiter,:])
+	return (h,k)
 end
 
 # ╔═╡ 097d2cec-1f08-4f45-9112-04a1687230ed
 begin
-	ψ₀ = 1
-	A = 1
-	δ = 1000
-	γ=0.1
+	ψ₀ = 0
+	A = .1
+	δ = 1
+	γ=0.01
 end
 
 # ╔═╡ 7d503c27-d4e2-4ea5-b960-4690a03932be
 begin
-	iter = 100
-	M = 100
+	maxiter = 5000
+	M = 32
 	nodes=0:2*π/M:2*π
 	nodesp=nodes[1:M]
 
-	solh=zeros(iter,M)
-	solk=zeros(iter,M)
-	for i=1:length(γrange)
-	hsol,ksol=SolNum1Picard(M,iter,ψ₀,A,δ,γ )
-	solh[i,:]=hsol
-	solk[i,:]=ksol
-	end
+	solh=zeros(maxiter,M)
+	solk=zeros(maxiter,M)
+	
+	hsol,ksol=SolNum1Picard(M,maxiter,ψ₀,A,δ,γ)
+	
 	
 end
 
 # ╔═╡ 865cb63f-3d65-4226-ac9c-6204e64829e4
-	@bind i Slider(1:iter, default=1)
+	@bind i Slider(1:maxiter, default=maxiter,show_value=true)
 
 # ╔═╡ a7fd9bcc-33d0-4f3b-8022-6644eb1127a2
-	plot(plot(nodesp,solh[i,:],label="ϕ", lw=4, ylims=(-10, 10)),
-		plot(nodesp,solk[i,:],label="ψ", lw=4,ylims=(-10, 10)),
+	plot(plot(nodesp,hsol[i,:],label="ϕ", lw=4, ylims=(-0.5, -.3)),
+		plot(nodesp,ksol[i,:],label="ψ", lw=4,ylims=(0.5, 1)),
 		layout=(1,2))
 
 # ╔═╡ 2c1d3476-ab68-4a17-b783-9b5c1f200558
-anim = @animate  for i in 1:iter
-	plot(plot(nodesp,hsol[i,:],label="ϕ", lw=4, ylims=(-1.5, -0.5)),
-		plot(nodesp,ksol[i,:],label="ψ", lw=4,ylims=(0.5, 1)),
-		layout=(1,2), title="Picard(Iteration: $i / $iter)",)
-end
+#anim = @animate  for i in 1:maxiter
+#	plot(plot(nodesp,hsol[i,:],label="ϕ", lw=4, ylims=(-10, -4)),
+#		plot(nodesp,ksol[i,:],label="ψ", lw=4,ylims=(-0.5, .5)),
+#		layout=(1,2), title="Picard(Iteration: $i / $maxiter)",)
+#end
 
 # ╔═╡ d6e4b616-157b-4694-8385-55127fb482be
 # Save the animation as a GIF
-gif(anim, "Picard2.gif", fps=15)
+#gif(anim, "Picard2.gif", fps=15)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1350,9 +1350,7 @@ version = "1.4.1+1"
 # ╟─6d2ae9c5-ca56-4b31-ab70-6c26eb187a81
 # ╟─6f14c2e3-33e9-4ad0-89d7-ed3ea7e8dc45
 # ╟─e9e31182-647b-437d-ac04-eab584a10c5d
-# ╠═89763b3b-69c4-40da-b060-7eeb0e4b86f7
-# ╠═b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
-# ╠═733e9c4f-d122-46a9-a908-14e2fc4867ea
+# ╟─b8bba7a2-c33d-4e7d-b941-f6c4074b7c23
 # ╟─22099ce3-7655-4652-8e6c-540de4c61548
 # ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
 # ╟─05c8fb62-ba89-46c5-b182-8999ea519d06

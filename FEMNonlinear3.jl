@@ -246,15 +246,20 @@ end
 		layout=(1,2))
 
 # ╔═╡ 2c1d3476-ab68-4a17-b783-9b5c1f200558
+# ╠═╡ disabled = true
+#=╠═╡
 anim = @animate  for i in 1:iter
 	plot(plot(nodesp,hsol[i,:],label="ϕ", lw=4, ylims=(-1.5, -0.5)),
 		plot(nodesp,ksol[i,:],label="ψ", lw=4,ylims=(0.5, 1)),
 		layout=(1,2), title="Picard(Iteration: $i / $iter)",)
 end
+  ╠═╡ =#
 
 # ╔═╡ d6e4b616-157b-4694-8385-55127fb482be
+#=╠═╡
 # Save the animation as a GIF
 gif(anim, "Picard2.gif", fps=15)
+  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
