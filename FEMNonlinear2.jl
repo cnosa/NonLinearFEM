@@ -117,9 +117,9 @@ $\psi_{n+1}(t) = \sum_{j=0}^{M}k_{j}b_{j}(t)$
 
 where $M$ is a positive integer, $h_0 = h_M$ and $k_0 = k_M$, we can write the previous equations as
 
-$D h = (-A)Ek +(-A\psi_0)b$
+$D h_{n+1} =b_{n}$
 
-$D k = \frac{A}{\delta}b$
+$D k_{n+1} = c_{n}$
 
 where
 """
@@ -1388,7 +1388,7 @@ version = "1.4.1+1"
 # ╟─85e8541b-b1dc-423b-b8f2-a3dee5e51992
 # ╟─05c8fb62-ba89-46c5-b182-8999ea519d06
 # ╠═89414081-c3ad-42b8-a409-166eac20764f
-# ╟─2269f1c8-26e3-4426-8037-756566fb9d63
+# ╠═2269f1c8-26e3-4426-8037-756566fb9d63
 # ╠═53772983-f2dc-4b93-99f6-eada9726c2c5
 # ╠═097d2cec-1f08-4f45-9112-04a1687230ed
 # ╠═7d503c27-d4e2-4ea5-b960-4690a03932be
